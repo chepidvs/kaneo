@@ -62,7 +62,7 @@
 		"@tiptap/react": "^3.20.1",
 		"@tiptap/starter-kit": "^3.20.1",
 		"@types/file-saver": "^2.0.7",
-		"@vitejs/plugin-react": "^5.1.4",
+		"@vitejs/plugin-react": "^6.0.1",
 		"babel-plugin-react-compiler": "^19.0.0-beta-714736e-20250131",
 		"better-auth": "^1.5.6",
 		"class-variance-authority": "^0.7.1",
