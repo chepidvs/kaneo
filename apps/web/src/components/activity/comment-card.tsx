@@ -1,11 +1,17 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { ExternalLink, Github, Pencil } from "lucide-react";
+import { Ellipsis, ExternalLink, Github, Pencil, Trash2 } from "lucide-react";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import CommentEditor from "@/components/activity/comment-editor";
 import { useAuth } from "@/components/providers/auth-provider/hooks/use-auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/menu";
 import {
   HoverCard,
   HoverCardContent,
@@ -17,7 +23,9 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import useDeleteComment from "@/hooks/mutations/comment/use-delete-comment";
 import useUpdateComment from "@/hooks/mutations/comment/use-update-comment";
+import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { formatDateTime, formatRelativeTime } from "@/lib/format";
 import { toast } from "@/lib/toast";
 
@@ -47,13 +55,25 @@ export default function CommentCard({
 }: CommentCardProps) {
   const { t } = useTranslation();
   const { user: currentUser } = useAuth();
+  const { isAdmin, isOwner } = useWorkspacePermission();
   const [isEditing, setIsEditing] = useState(false);
   const [editedContent, setEditedContent] = useState(content);
-  const { mutateAsync: updateComment, isPending } = useUpdateComment();
+
+  const { mutateAsync: updateComment, isPending: isUpdating } =
+    useUpdateComment();
+  const { mutateAsync: deleteComment, isPending: isDeleting } =
+    useDeleteComment(taskId);
+
   const queryClient = useQueryClient();
 
-  const canEdit = currentUser?.id === user?.id;
+  const isExternalComment = Boolean(externalSource);
   const isFromGitHub = externalSource === "github";
+  const isOwnComment = currentUser?.id === user?.id;
+  const canManageOthersComment = isOwner || isAdmin;
+
+  const canEdit = isOwnComment && !isExternalComment;
+  const canDelete = !isExternalComment && (isOwnComment || canManageOthersComment);
+
   const githubProfileUrl =
     isFromGitHub && user?.name ? `https://github.com/${user.name}` : null;
   const commentUrl = externalUrl || null;
@@ -103,6 +123,24 @@ export default function CommentCard({
     updateComment,
   ]);
 
+  const handleDelete = useCallback(async () => {
+    const confirmed = window.confirm("Delete comment?");
+    if (!confirmed) return;
+
+    try {
+      await deleteComment({
+        activityId: commentId,
+      });
+
+      toast.success("Comment deleted");
+    } catch (error) {
+      console.error("Failed to delete comment:", error);
+      toast.error("Failed to delete comment");
+    }
+  }, [commentId, deleteComment]);
+
+  const isBusy = isUpdating || isDeleting;
+
   return (
     <TooltipProvider>
       <div className="group relative w-full rounded-xl border border-border/80 bg-card/60">
@@ -116,7 +154,7 @@ export default function CommentCard({
                     {user?.name?.charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <span className="text-sm font-medium text-foreground/92 hover:text-foreground transition-colors">
+                <span className="text-sm font-medium text-foreground/92 transition-colors hover:text-foreground">
                   {user?.name}
                 </span>
               </div>
@@ -130,7 +168,7 @@ export default function CommentCard({
                   </AvatarFallback>
                 </Avatar>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-foreground leading-none">
+                  <p className="text-sm font-medium leading-none text-foreground">
                     {user?.name}
                   </p>
                   {user?.email && (
@@ -196,22 +234,40 @@ export default function CommentCard({
           )}
         </div>
 
-        {canEdit && !isEditing && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleEdit}
-                className="absolute top-2 right-2 h-6 w-6 rounded-md p-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground"
-              >
-                <Pencil className="size-3.5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p className="text-xs">{t("activity:comment.edit")}</p>
-            </TooltipContent>
-          </Tooltip>
+        {(canEdit || canDelete) && !isEditing && (
+          <div className="absolute top-2 right-2 opacity-0 transition-opacity group-hover:opacity-100">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 rounded-md p-0 text-muted-foreground hover:text-foreground"
+                  disabled={isBusy}
+                >
+                  <Ellipsis className="size-3.5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {canEdit && (
+                  <DropdownMenuItem onClick={handleEdit}>
+                    <Pencil className="mr-2 size-3.5" />
+                    {t("activity:comment.edit")}
+                  </DropdownMenuItem>
+                )}
+                {canDelete && (
+                  <DropdownMenuItem
+                    onClick={() => {
+                      void handleDelete();
+                    }}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Trash2 className="mr-2 size-3.5" />
+                    Delete
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         )}
 
         <div className="pt-0.5">
@@ -234,12 +290,12 @@ export default function CommentCard({
         </div>
 
         {isEditing && (
-          <div className="flex items-center justify-end gap-2 border-border/70 border-t bg-card/60 px-3 py-2">
+          <div className="flex items-center justify-end gap-2 border-t border-border/70 bg-card/60 px-3 py-2">
             <Button
               variant="secondary"
               size="sm"
               onClick={handleCancel}
-              disabled={isPending}
+              disabled={isBusy}
               className="h-7 px-2.5 text-xs"
             >
               {t("common:actions.cancel")}
@@ -248,7 +304,7 @@ export default function CommentCard({
               variant="default"
               size="sm"
               onClick={handleSave}
-              disabled={isPending || !editedContent.trim()}
+              disabled={isBusy || !editedContent.trim()}
               className="h-7 px-2.5 text-xs"
             >
               {t("activity:comment.save")}

@@ -38,7 +38,7 @@ import {
 } from "@/components/ui/popover";
 import labelColors from "@/constants/label-colors";
 import { useBulkOperations } from "@/hooks/mutations/task/use-bulk-operations";
-import useGetLabelsByWorkspace from "@/hooks/queries/label/use-get-labels-by-workspace";
+import useGetLabelsByProject from "@/hooks/queries/label/use-get-labels-by-project";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
 import { getColumnIcon } from "@/lib/column";
@@ -78,7 +78,10 @@ function BulkToolbar() {
     ],
     [],
   );
+
   const { project } = useProjectStore();
+  const projectId = project?.id ?? "";
+
   const {
     bulkMoveToBacklog,
     bulkDelete,
@@ -89,28 +92,21 @@ function BulkToolbar() {
     bulkAddLabel,
     bulkDueDate,
   } = useBulkOperations();
+
   const { data: workspace } = useActiveWorkspace();
   const { data: workspaceUsers } = useGetActiveWorkspaceUsers(
     workspace?.id ?? "",
   );
-  const { data: workspaceLabels = [] } = useGetLabelsByWorkspace(
-    workspace?.id ?? "",
-  );
+  const { data: projectLabels = [] } = useGetLabelsByProject(projectId);
+
   const [isActionsOpen, setIsActionsOpen] = useState(false);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
 
   const selectedCount = selectedTaskIds.size;
 
   const uniqueLabels = useMemo(() => {
-    const labelMap = new Map<string, (typeof workspaceLabels)[0]>();
-    for (const label of workspaceLabels) {
-      const existing = labelMap.get(label.name);
-      if (!existing || (label.taskId === null && existing.taskId !== null)) {
-        labelMap.set(label.name, label);
-      }
-    }
-    return Array.from(labelMap.values());
-  }, [workspaceLabels]);
+    return projectLabels;
+  }, [projectLabels]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -307,7 +303,7 @@ function BulkToolbar() {
                 src={member.user?.image ?? ""}
                 alt={member.user?.name || ""}
               />
-              <AvatarFallback className="text-xs font-medium border border-border/30">
+              <AvatarFallback className="border border-border/30 text-xs font-medium">
                 {member.user?.name?.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
@@ -337,7 +333,7 @@ function BulkToolbar() {
           label: label.name,
           icon: (
             <span
-              className="inline-block w-3 h-3 rounded-full shrink-0"
+              className="inline-block h-3 w-3 shrink-0 rounded-full"
               style={{
                 backgroundColor:
                   labelColors.find((c) => c.value === label.color)?.color ||
@@ -369,7 +365,7 @@ function BulkToolbar() {
   if (selectedCount === 0) return null;
 
   return (
-    <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50">
+    <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 transform">
       <Toolbar className="items-center gap-1 rounded-xl border-border/80 bg-background px-1.5 py-1 shadow-lg/8">
         <ToolbarGroup className="px-1.5">
           <span className="text-sm font-medium text-foreground">
@@ -402,11 +398,11 @@ function BulkToolbar() {
                 onSelect={handleBulkDueDate}
                 className="w-full bg-popover"
               />
-              <div className="p-0 border-t border-border">
+              <div className="border-t border-border p-0">
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="w-full justify-start gap-2 text-muted-foreground hover:text-foreground rounded-none"
+                  className="w-full justify-start gap-2 rounded-none text-muted-foreground hover:text-foreground"
                   onClick={() => handleBulkDueDate(undefined)}
                 >
                   <X className="h-4 w-4" />

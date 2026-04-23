@@ -2,11 +2,13 @@ import { eq } from "drizzle-orm";
 import db from "../../database";
 import { labelTable } from "../../database/schema";
 
-function getLabelsByWorkspaceId(workspaceId: string) {
-  return db
+async function getLabelsByProjectId(projectId: string) {
+  const labels = await db
     .select()
     .from(labelTable)
-    .where(eq(labelTable.workspaceId, workspaceId));
+    .where(eq(labelTable.projectId, projectId));
+
+  return labels;
 }
 
-export default getLabelsByWorkspaceId;
+export default getLabelsByProjectId;

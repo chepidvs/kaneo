@@ -25,7 +25,7 @@ import {
 import labelColors from "@/constants/label-colors";
 import { shortcuts } from "@/constants/shortcuts";
 import { useUpdateTask } from "@/hooks/mutations/task/use-update-task";
-import useGetLabelsByWorkspace from "@/hooks/queries/label/use-get-labels-by-workspace";
+import useGetLabelsByProject from "@/hooks/queries/label/use-get-labels-by-project";
 import { useGetTasks } from "@/hooks/queries/task/use-get-tasks";
 import { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
 import { useRegisterShortcuts } from "@/hooks/use-keyboard-shortcuts";
@@ -67,7 +67,7 @@ function RouteComponent() {
   });
 
   const { data: users } = useGetActiveWorkspaceUsers(workspaceId);
-  const { data: workspaceLabels = [] } = useGetLabelsByWorkspace(workspaceId);
+  const { data: workspaceLabels = [] } = useGetLabelsByProject(projectId);
   const queryClient = useQueryClient();
 
   const handleCloseTaskSheet = useCallback(() => {

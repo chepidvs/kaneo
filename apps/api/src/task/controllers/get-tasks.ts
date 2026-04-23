@@ -16,6 +16,7 @@ import {
   externalLinkTable,
   labelTable,
   projectTable,
+  taskLabelTable,
   taskTable,
   userTable,
 } from "../../database/schema";
@@ -156,13 +157,14 @@ async function getTasks(projectId: string, options: GetTasksOptions = {}) {
     taskIds.length > 0
       ? await db
           .select({
+            taskId: taskLabelTable.taskId,
             id: labelTable.id,
             name: labelTable.name,
             color: labelTable.color,
-            taskId: labelTable.taskId,
           })
-          .from(labelTable)
-          .where(inArray(labelTable.taskId, taskIds))
+          .from(taskLabelTable)
+          .innerJoin(labelTable, eq(taskLabelTable.labelId, labelTable.id))
+          .where(inArray(taskLabelTable.taskId, taskIds))
       : [];
 
   const externalLinksData =
@@ -177,17 +179,17 @@ async function getTasks(projectId: string, options: GetTasksOptions = {}) {
     string,
     Array<{ id: string; name: string; color: string }>
   >();
+
   for (const label of labelsData) {
-    if (label.taskId) {
-      if (!taskLabelsMap.has(label.taskId)) {
-        taskLabelsMap.set(label.taskId, []);
-      }
-      taskLabelsMap.get(label.taskId)?.push({
-        id: label.id,
-        name: label.name,
-        color: label.color,
-      });
+    if (!taskLabelsMap.has(label.taskId)) {
+      taskLabelsMap.set(label.taskId, []);
     }
+
+    taskLabelsMap.get(label.taskId)?.push({
+      id: label.id,
+      name: label.name,
+      color: label.color,
+    });
   }
 
   const taskExternalLinksMap = new Map<
@@ -203,10 +205,12 @@ async function getTasks(projectId: string, options: GetTasksOptions = {}) {
       metadata: Record<string, unknown> | null;
     }>
   >();
+
   for (const externalLink of externalLinksData) {
     if (!taskExternalLinksMap.has(externalLink.taskId)) {
       taskExternalLinksMap.set(externalLink.taskId, []);
     }
+
     taskExternalLinksMap.get(externalLink.taskId)?.push({
       ...externalLink,
       metadata: externalLink.metadata
