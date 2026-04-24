@@ -36,11 +36,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import useAttachLabelToTask from "@/hooks/mutations/label/use-attach-label-to-task";
 import useCreateLabel from "@/hooks/mutations/label/use-create-label";
 import useCreateTask from "@/hooks/mutations/task/use-create-task";
 import { useDeleteTask } from "@/hooks/mutations/task/use-delete-task";
 import { useUpdateTask } from "@/hooks/mutations/task/use-update-task";
-import useGetLabelsByWorkspace from "@/hooks/queries/label/use-get-labels-by-workspace";
+import useGetLabelsByProject from "@/hooks/queries/label/use-get-labels-by-project";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
 import { cn } from "@/lib/cn";
@@ -70,13 +71,13 @@ type LabelColor =
   | "pink"
   | "red";
 
-type Label = {
+type ProjectLabel = {
   id: string;
   name: string;
   color: string;
-  taskId: string | null;
-  workspaceId: string;
-  createdAt: string;
+  projectId?: string;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 type PopoverStep = "select" | "color";
@@ -100,6 +101,10 @@ function normalizeTask(
     labels: task.labels ?? [],
     externalLinks: task.externalLinks ?? [],
   };
+}
+
+function normalizeLabelName(name: string) {
+  return name.trim().replace(/\s+/g, " ");
 }
 
 function CreateTaskModal({
@@ -165,15 +170,18 @@ function CreateTaskModal({
       })),
     [t],
   );
+
   const location = useLocation();
   const { data: workspace } = useActiveWorkspace();
   const { data: workspaceUsers } = useGetActiveWorkspaceUsers(
     workspace?.id || "",
   );
+
   const { mutateAsync: createLabel } = useCreateLabel();
-  const { data: workspaceLabels = [] } = useGetLabelsByWorkspace(
-    workspace?.id || "",
-  );
+  const { mutateAsync: attachLabelToTask } = useAttachLabelToTask();
+  const { mutateAsync: createTask } = useCreateTask();
+  const { mutateAsync: updateTask } = useUpdateTask();
+  const { mutateAsync: deleteTask } = useDeleteTask();
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -182,7 +190,7 @@ function CreateTaskModal({
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
   const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
   const [createMore, setCreateMore] = useState(false);
-  const [labels, setLabels] = useState<Label[]>([]);
+  const [labels, setLabels] = useState<ProjectLabel[]>([]);
   const [draftTask, setDraftTask] = useState<Task | null>(null);
 
   const [labelsOpen, setLabelsOpen] = useState(false);
@@ -195,35 +203,33 @@ function CreateTaskModal({
     location.pathname.match(/\/project\/([^/]+)/)?.[1] ?? null;
   const resolvedProjectId = projectId || project?.id || routeProjectId || "";
 
+  const { data: projectLabels = [] } = useGetLabelsByProject(resolvedProjectId);
+
   const searchInputRef = useRef<HTMLInputElement>(null);
   const draftCreationPromiseRef = useRef<Promise<Task> | null>(null);
   const didSubmitRef = useRef(false);
 
-  const { mutateAsync: createTask } = useCreateTask();
-  const { mutateAsync: updateTask } = useUpdateTask();
-  const { mutateAsync: deleteTask } = useDeleteTask();
-
-  const filteredLabels = (() => {
-    const searchFiltered = workspaceLabels.filter((label) =>
+  const filteredLabels = useMemo(() => {
+    return projectLabels.filter((label) =>
       label.name.toLowerCase().includes(searchValue.toLowerCase()),
     );
+  }, [projectLabels, searchValue]);
 
-    const labelMap = new Map<string, (typeof workspaceLabels)[0]>();
-    for (const label of searchFiltered) {
-      const existing = labelMap.get(label.name);
-      if (!existing || (label.taskId === null && existing.taskId !== null)) {
-        labelMap.set(label.name, label);
-      }
-    }
+  const normalizedSearchValue = useMemo(
+    () => normalizeLabelName(searchValue),
+    [searchValue],
+  );
 
-    return Array.from(labelMap.values());
-  })();
-
-  const isCreatingNewLabel =
-    searchValue &&
-    !workspaceLabels.some(
-      (label) => label.name.toLowerCase() === searchValue.toLowerCase(),
-    );
+  const isCreatingNewLabel = useMemo(
+    () =>
+      !!normalizedSearchValue &&
+      !projectLabels.some(
+        (label) =>
+          normalizeLabelName(label.name).toLowerCase() ===
+          normalizedSearchValue.toLowerCase(),
+      ),
+    [projectLabels, normalizedSearchValue],
+  );
 
   const handleClose = () => {
     const shouldDeleteDraft = draftTask && !didSubmitRef.current;
@@ -355,17 +361,33 @@ function CreateTaskModal({
     createTask,
     description,
     draftTask,
-    startDate,
     dueDate,
     priority,
     resolvedProjectId,
-    title,
+    startDate,
     t,
+    title,
   ]);
+
+  const attachSelectedLabels = useCallback(
+    async (taskId: string) => {
+      if (labels.length === 0) return;
+
+      await Promise.all(
+        labels.map((label) =>
+          attachLabelToTask({
+            id: label.id,
+            taskId,
+          }),
+        ),
+      );
+    },
+    [attachLabelToTask, labels],
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !resolvedProjectId || !workspace?.id) return;
+    if (!title.trim() || !resolvedProjectId) return;
 
     try {
       const taskStatus = status ?? "to-do";
@@ -398,21 +420,20 @@ function CreateTaskModal({
             }),
           );
 
-      for (const label of labels) {
-        try {
-          await createLabel({
-            name: label.name,
-            color: label.color,
-            taskId: savedTask.id,
-            workspaceId: workspace.id,
-          });
-        } catch (error) {
-          console.error("Failed to create label:", error);
-        }
-      }
+      await attachSelectedLabels(savedTask.id);
 
-      setDraftTask(savedTask);
-      syncTaskIntoProject(savedTask);
+      const savedTaskWithLabels: Task = {
+        ...savedTask,
+        labels: labels.map((label) => ({
+          id: label.id,
+          name: label.name,
+          color: label.color,
+        })),
+      };
+
+      setDraftTask(savedTaskWithLabels);
+      syncTaskIntoProject(savedTaskWithLabels);
+
       toast.success(
         draftTask
           ? t("common:modals.createTask.successUpdated")
@@ -466,6 +487,7 @@ function CreateTaskModal({
     }
     return t("tasks:status.in-progress");
   }, [status, t]);
+
   const selectedUser = workspaceUsers?.members?.find(
     (u) => u.userId === assigneeId,
   );
@@ -482,7 +504,7 @@ function CreateTaskModal({
 
       if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
         e.preventDefault();
-        if (title.trim() && project?.id && workspace?.id) {
+        if (title.trim() && resolvedProjectId) {
           const form = document.querySelector("form");
           if (form) {
             form.dispatchEvent(
@@ -492,7 +514,7 @@ function CreateTaskModal({
         }
       }
     },
-    [open, title, project?.id, workspace?.id],
+    [open, resolvedProjectId, title],
   );
 
   useEffect(() => {
@@ -512,55 +534,58 @@ function CreateTaskModal({
     setTimeout(resetLabelsPopover, 200);
   };
 
-  const toggleLabel = (labelName: string) => {
-    const existingLabel = labels.find((l) => l.name === labelName);
-    if (existingLabel) {
-      setLabels(labels.filter((l) => l.name !== labelName));
-    } else {
-      const workspaceLabel = workspaceLabels.find((l) => l.name === labelName);
-      if (workspaceLabel) {
-        setLabels([
-          ...labels,
-          {
-            id: workspaceLabel.id,
-            name: workspaceLabel.name,
-            color: workspaceLabel.color,
-            taskId: null,
-            workspaceId: workspaceLabel.workspaceId || "",
-            createdAt: workspaceLabel.createdAt,
-          },
-        ]);
+  const toggleLabel = (label: ProjectLabel) => {
+    setLabels((currentLabels) => {
+      const alreadySelected = currentLabels.some(
+        (item) => item.id === label.id,
+      );
+
+      if (alreadySelected) {
+        return currentLabels.filter((item) => item.id !== label.id);
       }
-    }
+
+      return [...currentLabels, label];
+    });
   };
 
   const handleCreateNewClick = () => {
-    setNewLabelName(searchValue);
+    const normalized = normalizeLabelName(searchValue);
+    if (!normalized) return;
+
+    setNewLabelName(normalized);
     setLabelsStep("color");
   };
 
   const handleColorSelect = async (color: LabelColor) => {
     setSelectedColor(color);
 
-    if (!newLabelName.trim() || !workspace?.id) return;
+    const normalizedName = normalizeLabelName(newLabelName);
+    if (!normalizedName || !resolvedProjectId) return;
 
     try {
       const createdLabel = await createLabel({
-        name: newLabelName.trim(),
-        color: color,
-        workspaceId: workspace.id,
+        name: normalizedName,
+        color,
+        projectId: resolvedProjectId,
       });
 
-      const newLabel: Label = {
+      const newLabel: ProjectLabel = {
         id: createdLabel.id,
         name: createdLabel.name,
         color: createdLabel.color,
-        taskId: createdLabel.taskId ?? null,
-        workspaceId: createdLabel.workspaceId ?? workspace.id,
+        projectId: createdLabel.projectId,
         createdAt: createdLabel.createdAt,
+        updatedAt: createdLabel.updatedAt,
       };
 
-      setLabels([...labels, newLabel]);
+      setLabels((currentLabels) => {
+        const alreadySelected = currentLabels.some(
+          (label) => label.id === newLabel.id,
+        );
+
+        return alreadySelected ? currentLabels : [...currentLabels, newLabel];
+      });
+
       toast.success(t("common:modals.createTask.labelCreated"));
       handleLabelsClose();
     } catch (error) {
@@ -572,8 +597,10 @@ function CreateTaskModal({
     }
   };
 
-  const removeLabel = (labelName: string) => {
-    setLabels(labels.filter((l) => l.name !== labelName));
+  const removeLabel = (labelId: string) => {
+    setLabels((currentLabels) =>
+      currentLabels.filter((label) => label.id !== labelId),
+    );
   };
 
   return (
@@ -633,11 +660,11 @@ function CreateTaskModal({
               <div className="flex flex-wrap mb-2">
                 {labels.map((label) => (
                   <Badge
-                    key={label.name}
+                    key={label.id}
                     color={label.color}
                     variant="outline"
                     className="flex items-center gap-1 pl-3 cursor-pointer hover:bg-accent/50 transition-colors"
-                    onClick={() => removeLabel(label.name)}
+                    onClick={() => removeLabel(label.id)}
                   >
                     <span
                       className="inline-block w-2 h-2 mr-1.5 rounded-full"
@@ -902,36 +929,42 @@ function CreateTaskModal({
                               {t("common:modals.createTask.noLabelsFound")}
                             </span>
                           )}
-                        {filteredLabels.map((label) => (
-                          <button
-                            key={label.id}
-                            type="button"
-                            className="w-full flex items-center gap-2 px-2 py-1.5 text-xs hover:bg-accent/50 text-left"
-                            onClick={() => toggleLabel(label.name)}
-                          >
-                            <div className="flex-shrink-0 w-3 flex justify-center">
-                              {labels.some((l) => l.name === label.name) && (
-                                <Check className="w-3 h-3" />
-                              )}
-                            </div>
-                            <span
-                              className="w-2 h-2 rounded-full flex-shrink-0"
-                              style={{
-                                backgroundColor:
-                                  labelColors.find(
-                                    (c) => c.value === label.color,
-                                  )?.color || "var(--color-neutral-400)",
-                              }}
-                            />
-                            <span className="max-w-20 truncate">
-                              {label.name}
-                            </span>
-                          </button>
-                        ))}
+
+                        {filteredLabels.map((label) => {
+                          const isSelected = labels.some(
+                            (selectedLabel) => selectedLabel.id === label.id,
+                          );
+
+                          return (
+                            <button
+                              key={label.id}
+                              type="button"
+                              className="w-full flex items-center gap-2 px-2 py-1.5 text-xs hover:bg-accent/50 text-left"
+                              onClick={() => toggleLabel(label)}
+                            >
+                              <div className="flex-shrink-0 w-3 flex justify-center">
+                                {isSelected && <Check className="w-3 h-3" />}
+                              </div>
+                              <span
+                                className="w-2 h-2 rounded-full flex-shrink-0"
+                                style={{
+                                  backgroundColor:
+                                    labelColors.find(
+                                      (c) => c.value === label.color,
+                                    )?.color || "var(--color-neutral-400)",
+                                }}
+                              />
+                              <span className="max-w-20 truncate">
+                                {label.name}
+                              </span>
+                            </button>
+                          );
+                        })}
 
                         {isCreatingNewLabel && filteredLabels.length > 0 && (
                           <div className="border-t border-border my-1" />
                         )}
+
                         {isCreatingNewLabel && (
                           <button
                             type="button"
@@ -952,7 +985,7 @@ function CreateTaskModal({
                             />
                             <span className="truncate">
                               {t("common:modals.createTask.createLabel", {
-                                name: searchValue,
+                                name: normalizedSearchValue,
                               })}
                             </span>
                           </button>
@@ -960,6 +993,7 @@ function CreateTaskModal({
                       </div>
                     </div>
                   )}
+
                   {labelsStep === "color" && (
                     <div className="w-auto">
                       <div className="flex items-center justify-between p-2 border-b border-border">

@@ -1,5 +1,4 @@
-import { useQueryClient } from "@tanstack/react-query";
-import { Check, Plus, Search, X } from "lucide-react";
+import { Check, Plus, Search } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Input } from "@/components/ui/input";
@@ -8,10 +7,11 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import useAttachLabelToTask from "@/hooks/mutations/label/use-attach-label-to-task";
 import useCreateLabel from "@/hooks/mutations/label/use-create-label";
-import useDeleteLabel from "@/hooks/mutations/label/use-delete-label";
+import useDetachLabelFromTask from "@/hooks/mutations/label/use-detach-label-from-task";
+import useGetLabelsByProject from "@/hooks/queries/label/use-get-labels-by-project";
 import useGetLabelsByTask from "@/hooks/queries/label/use-get-labels-by-task";
-import useGetLabelsByWorkspace from "@/hooks/queries/label/use-get-labels-by-workspace";
 import { cn } from "@/lib/cn";
 import { toast } from "@/lib/toast";
 import type Task from "@/types/task";
@@ -26,7 +26,7 @@ const labelColors = [
   { value: "orange", key: "terracotta", color: "var(--color-orange-600)" },
   { value: "pink", key: "rose", color: "var(--color-rose-600)" },
   { value: "red", key: "crimson", color: "var(--color-red-600)" },
-];
+] as const;
 
 type LabelColor =
   | "gray"
@@ -48,9 +48,13 @@ type TaskLabelsPopoverProps = {
 
 type PopoverStep = "select" | "color";
 
+function normalizeLabelName(name: string) {
+  return name.trim().replace(/\s+/g, " ");
+}
+
 export default function TaskLabelsPopover({
   task,
-  workspaceId,
+  workspaceId: _workspaceId,
   children,
   triggerNativeButton = true,
 }: TaskLabelsPopoverProps) {
@@ -60,44 +64,42 @@ export default function TaskLabelsPopover({
   const [searchValue, setSearchValue] = useState("");
   const [selectedColor, setSelectedColor] = useState<LabelColor>("gray");
   const [newLabelName, setNewLabelName] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const queryClient = useQueryClient();
 
   const { mutateAsync: createLabel } = useCreateLabel();
-  const { mutateAsync: deleteLabel } = useDeleteLabel();
+  const { mutateAsync: attachLabel } = useAttachLabelToTask();
+  const { mutateAsync: detachLabel } = useDetachLabelFromTask();
 
   const { data: taskLabels = [] } = useGetLabelsByTask(task.id);
-  const { data: workspaceLabels = [] } = useGetLabelsByWorkspace(workspaceId);
+  const { data: projectLabels = [] } = useGetLabelsByProject(task.projectId);
 
-  const taskLabelNames = useMemo(
-    () => taskLabels.map((label) => label.name),
+  const assignedLabelIds = useMemo(
+    () => new Set(taskLabels.map((label) => label.id)),
     [taskLabels],
   );
 
   const filteredLabels = useMemo(() => {
-    const searchFiltered = workspaceLabels.filter((label) =>
+    return projectLabels.filter((label) =>
       label.name.toLowerCase().includes(searchValue.toLowerCase()),
     );
+  }, [projectLabels, searchValue]);
 
-    const labelMap = new Map<string, (typeof workspaceLabels)[0]>();
-    for (const label of searchFiltered) {
-      const existing = labelMap.get(label.name);
-      if (!existing || (label.taskId === null && existing.taskId !== null)) {
-        labelMap.set(label.name, label);
-      }
-    }
-
-    return Array.from(labelMap.values());
-  }, [workspaceLabels, searchValue]);
+  const normalizedSearchValue = useMemo(
+    () => normalizeLabelName(searchValue),
+    [searchValue],
+  );
 
   const isCreatingNewLabel = useMemo(
     () =>
-      searchValue &&
-      !workspaceLabels.some(
-        (label) => label.name.toLowerCase() === searchValue.toLowerCase(),
+      !!normalizedSearchValue &&
+      !projectLabels.some(
+        (label) =>
+          normalizeLabelName(label.name).toLowerCase() ===
+          normalizedSearchValue.toLowerCase(),
       ),
-    [workspaceLabels, searchValue],
+    [projectLabels, normalizedSearchValue],
   );
 
   useEffect(() => {
@@ -111,6 +113,7 @@ export default function TaskLabelsPopover({
     setSearchValue("");
     setNewLabelName("");
     setSelectedColor("gray");
+    setIsSubmitting(false);
   };
 
   const handleClose = () => {
@@ -119,73 +122,66 @@ export default function TaskLabelsPopover({
   };
 
   const handleToggleLabel = async (labelId: string) => {
-    try {
-      const workspaceLabel = workspaceLabels.find((l) => l.id === labelId);
-      if (!workspaceLabel) return;
+    if (isSubmitting) return;
 
-      const isCurrentlyAssigned = taskLabelNames.includes(workspaceLabel.name);
+    setIsSubmitting(true);
+
+    try {
+      const isCurrentlyAssigned = assignedLabelIds.has(labelId);
 
       if (isCurrentlyAssigned) {
-        // Remove label from task - find by name since IDs are different
-        const taskLabel = taskLabels.find(
-          (l) => l.name === workspaceLabel.name,
-        );
-        if (taskLabel?.id) {
-          await deleteLabel({ id: taskLabel.id });
-          toast.success(t("tasks:popover.labels.removeSuccess"));
-        }
-      } else {
-        // Add label to task
-        await createLabel({
-          name: workspaceLabel.name,
-          color: workspaceLabel.color as LabelColor,
+        await detachLabel({
+          id: labelId,
           taskId: task.id,
-          workspaceId,
         });
+
+        toast.success(t("tasks:popover.labels.removeSuccess"));
+      } else {
+        await attachLabel({
+          id: labelId,
+          taskId: task.id,
+        });
+
         toast.success(t("tasks:popover.labels.addSuccess"));
       }
-
-      await queryClient.invalidateQueries({
-        queryKey: ["tasks", task.projectId],
-      });
     } catch (error) {
       toast.error(
         error instanceof Error
           ? error.message
           : t("tasks:popover.labels.updateError"),
       );
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleCreateNewClick = () => {
-    setNewLabelName(searchValue);
+    const normalized = normalizeLabelName(searchValue);
+    if (!normalized) return;
+
+    setNewLabelName(normalized);
     setStep("color");
   };
 
   const handleColorSelect = async (color: LabelColor) => {
-    setSelectedColor(color);
+    if (isSubmitting) return;
 
-    // Create the label immediately
-    if (!newLabelName.trim()) return;
+    const normalizedName = normalizeLabelName(newLabelName);
+    if (!normalizedName) return;
+
+    setSelectedColor(color);
+    setIsSubmitting(true);
 
     try {
-      // First create the label in the workspace
-      await createLabel({
-        name: newLabelName.trim(),
-        color: color,
-        workspaceId,
+      const createdLabel = await createLabel({
+        name: normalizedName,
+        color,
+        projectId: task.projectId,
       });
 
-      // Then assign it to the task
-      await createLabel({
-        name: newLabelName.trim(),
-        color: color,
+      await attachLabel({
+        id: createdLabel.id,
         taskId: task.id,
-        workspaceId,
-      });
-
-      await queryClient.invalidateQueries({
-        queryKey: ["tasks", task.projectId],
       });
 
       toast.success(t("tasks:popover.labels.createSuccess"));
@@ -196,75 +192,71 @@ export default function TaskLabelsPopover({
           ? error.message
           : t("tasks:popover.labels.createError"),
       );
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const renderSelectStep = () => (
     <div className="w-auto">
-      <div className="flex items-center gap-2 p-2 border-b border-border">
-        <Search className="w-3 h-3 text-muted-foreground" />
+      <div className="flex items-center gap-2 border-b border-border p-2">
+        <Search className="h-3 w-3 text-muted-foreground" />
         <Input
           ref={searchInputRef}
           value={searchValue}
           onChange={(e) => setSearchValue(e.target.value)}
           placeholder={t("tasks:popover.labels.searchPlaceholder")}
-          className="border-none p-0 h-auto focus-visible:ring-0 shadow-none !bg-transparent"
+          className="h-auto border-none p-0 shadow-none !bg-transparent focus-visible:ring-0"
         />
       </div>
 
       <div className="py-1">
         {filteredLabels.length === 0 && searchValue.length === 0 && (
-          <span className="text-xs text-muted-foreground px-2">
+          <span className="px-2 text-xs text-muted-foreground">
             {t("tasks:popover.labels.empty")}
           </span>
         )}
+
         {filteredLabels.map((label) => (
           <button
             key={label.id}
             type="button"
-            className="w-full flex items-center gap-2 px-2 py-1.5 text-xs hover:bg-accent/50 text-left"
+            disabled={isSubmitting}
+            className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-xs hover:bg-accent/50 disabled:cursor-not-allowed disabled:opacity-50"
             onClick={() => handleToggleLabel(label.id)}
           >
-            <div className="flex-shrink-0 w-3 flex justify-center">
-              {taskLabelNames.includes(label.name) && (
-                <Check className="w-3 h-3" />
-              )}
+            <div className="flex w-3 shrink-0 justify-center">
+              {assignedLabelIds.has(label.id) && <Check className="h-3 w-3" />}
             </div>
+
             <span
-              className="w-2 h-2 rounded-full flex-shrink-0"
+              className="h-2 w-2 shrink-0 rounded-full"
               style={{
                 backgroundColor:
                   labelColors.find((c) => c.value === label.color)?.color ||
                   "var(--color-neutral-400)",
               }}
             />
+
             <span className="max-w-20 truncate">{label.name}</span>
           </button>
         ))}
 
         {isCreatingNewLabel && filteredLabels.length > 0 && (
-          <div className="border-t border-border my-1" />
+          <div className="my-1 border-t border-border" />
         )}
+
         {isCreatingNewLabel && (
           <button
             type="button"
-            className="w-full flex items-center gap-2 px-2 py-1.5 text-xs hover:bg-accent/50 text-left"
+            disabled={isSubmitting}
+            className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-xs hover:bg-accent/50 disabled:cursor-not-allowed disabled:opacity-50"
             onClick={handleCreateNewClick}
           >
-            <div className="flex-shrink-0 w-3 flex justify-center">
-              <Plus className="w-3 h-3" />
+            <div className="flex w-3 shrink-0 justify-center">
+              <Plus className="h-3 w-3" />
             </div>
-            <span
-              className="w-2 h-2 rounded-full flex-shrink-0"
-              style={{
-                backgroundColor:
-                  labelColors.find((c) => c.value === selectedColor)?.color ||
-                  "var(--color-neutral-400)",
-              }}
-            />
-            <span className="truncate">
-              {t("tasks:popover.labels.create", { name: searchValue })}
-            </span>
+            <span>Create Label</span>
           </button>
         )}
       </div>
@@ -272,41 +264,30 @@ export default function TaskLabelsPopover({
   );
 
   const renderColorStep = () => (
-    <div className="w-auto">
-      <div className="flex items-center justify-between p-2 border-b border-border">
-        <span className="text-xs font-medium">
-          {t("tasks:popover.labels.chooseColor")}
-        </span>
-        <button
-          type="button"
-          onClick={() => setStep("select")}
-          className="w-4 h-4 flex items-center justify-center hover:bg-accent/50 rounded"
-        >
-          <X className="h-3 w-3" />
-        </button>
+    <div className="w-[220px] p-2">
+      <div className="mb-2 text-xs font-medium">
+        {t("tasks:popover.labels.chooseColor")}
       </div>
 
-      <div className="py-1">
-        {labelColors.map((color) => (
+      <div className="grid grid-cols-3 gap-2">
+        {labelColors.map((colorOption) => (
           <button
-            key={color.value}
+            key={colorOption.value}
             type="button"
+            disabled={isSubmitting}
             className={cn(
-              "w-full flex items-center gap-2 px-2 py-1.5 text-xs hover:bg-accent/50 text-left",
-              selectedColor === color.value && "bg-accent/30",
+              "flex items-center gap-2 rounded-md border px-2 py-2 text-xs hover:bg-accent/50 disabled:cursor-not-allowed disabled:opacity-50",
+              selectedColor === colorOption.value && "border-primary",
             )}
-            onClick={() => handleColorSelect(color.value as LabelColor)}
+            onClick={() => handleColorSelect(colorOption.value)}
           >
             <span
-              className="w-2 h-2 rounded-full flex-shrink-0"
-              style={{ backgroundColor: color.color }}
+              className="h-2.5 w-2.5 rounded-full"
+              style={{ backgroundColor: colorOption.color }}
             />
             <span className="truncate">
-              {t(`tasks:popover.labels.colors.${color.key}`)}
+              {t(`common:modals.createTask.labelColors.${colorOption.key}`)}
             </span>
-            {selectedColor === color.value && (
-              <Check className="w-3 h-3 ml-auto" />
-            )}
           </button>
         ))}
       </div>
@@ -315,12 +296,9 @@ export default function TaskLabelsPopover({
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild nativeButton={triggerNativeButton}>
-        {children}
-      </PopoverTrigger>
-      <PopoverContent className="p-0" align="start">
-        {step === "select" && renderSelectStep()}
-        {step === "color" && renderColorStep()}
+      <PopoverTrigger asChild={!triggerNativeButton}>{children}</PopoverTrigger>
+      <PopoverContent className="w-[240px] p-0" align="start">
+        {step === "select" ? renderSelectStep() : renderColorStep()}
       </PopoverContent>
     </Popover>
   );

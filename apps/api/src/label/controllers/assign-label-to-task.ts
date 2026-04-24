@@ -1,17 +1,12 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { labelTable, projectTable, taskTable } from "../../database/schema";
-import {
-  removeLabelFromGitea,
-  syncLabelToGitea,
-} from "../../plugins/gitea/utils/sync-label-to-gitea";
-import {
-  removeLabelFromGitHub,
-  syncLabelToGitHub,
-} from "../../plugins/github/utils/sync-label-to-github";
+import { taskLabelTable } from "../../database/schema";
+import { publishEvent } from "../../events";
+import { syncLabelToGitea } from "../../plugins/gitea/utils/sync-label-to-gitea";
+import { syncLabelToGitHub } from "../../plugins/github/utils/sync-label-to-github";
 
-async function assignLabelToTask(id: string, taskId: string) {
+async function assignLabelToTask(id: string, taskId: string, userId?: string) {
   const label = await db.query.labelTable.findFirst({
     where: (label, { eq }) => eq(label.id, id),
   });
@@ -22,15 +17,9 @@ async function assignLabelToTask(id: string, taskId: string) {
     });
   }
 
-  const [task] = await db
-    .select({
-      id: taskTable.id,
-      workspaceId: projectTable.workspaceId,
-    })
-    .from(taskTable)
-    .innerJoin(projectTable, eq(taskTable.projectId, projectTable.id))
-    .where(eq(taskTable.id, taskId))
-    .limit(1);
+  const task = await db.query.taskTable.findFirst({
+    where: (task, { eq }) => eq(task.id, taskId),
+  });
 
   if (!task) {
     throw new HTTPException(404, {
@@ -38,45 +27,59 @@ async function assignLabelToTask(id: string, taskId: string) {
     });
   }
 
-  if (label.workspaceId && label.workspaceId !== task.workspaceId) {
+  if (label.projectId !== task.projectId) {
     throw new HTTPException(400, {
-      message: "Label and task must belong to the same workspace",
+      message: "Label and task must belong to the same project",
     });
   }
 
-  const [updatedLabel] = await db
-    .update(labelTable)
-    .set({ taskId })
-    .where(eq(labelTable.id, id))
+  const [attached] = await db
+    .insert(taskLabelTable)
+    .values({
+      taskId,
+      labelId: id,
+    })
+    .onConflictDoNothing({
+      target: [taskLabelTable.taskId, taskLabelTable.labelId],
+    })
     .returning();
 
-  if (!updatedLabel) {
+  const taskLabel =
+    attached ??
+    (await db.query.taskLabelTable.findFirst({
+      where: and(
+        eq(taskLabelTable.taskId, taskId),
+        eq(taskLabelTable.labelId, id),
+      ),
+    }));
+
+  if (!taskLabel) {
     throw new HTTPException(500, {
       message: "Failed to attach label to task",
     });
   }
 
-  if (label.taskId && label.taskId !== taskId) {
-    removeLabelFromGitHub(label.taskId, label.name).catch((error) => {
-      console.error("Failed to remove label from GitHub:", error);
-    });
-    removeLabelFromGitea(label.taskId, label.name).catch((error) => {
-      console.error("Failed to remove label from Gitea:", error);
+  syncLabelToGitHub(taskId, label.name, label.color).catch((error) => {
+    console.error("Failed to sync label to GitHub:", error);
+  });
+
+  syncLabelToGitea(taskId, label.name, label.color).catch((error) => {
+    console.error("Failed to sync label to Gitea:", error);
+  });
+
+  if (attached && userId) {
+    await publishEvent("task.label_added", {
+      taskId: task.id,
+      projectId: task.projectId,
+      userId,
+      labelId: label.id,
+      labelName: label.name,
+      labelColor: label.color,
+      type: "label_added",
     });
   }
 
-  syncLabelToGitHub(taskId, updatedLabel.name, updatedLabel.color).catch(
-    (error) => {
-      console.error("Failed to sync label to GitHub:", error);
-    },
-  );
-  syncLabelToGitea(taskId, updatedLabel.name, updatedLabel.color).catch(
-    (error) => {
-      console.error("Failed to sync label to Gitea:", error);
-    },
-  );
-
-  return updatedLabel;
+  return label;
 }
 
 export default assignLabelToTask;

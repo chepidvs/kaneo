@@ -5,7 +5,7 @@ import {
   useLocation,
   useNavigate,
 } from "@tanstack/react-router";
-import { Eye, GitBranch, Plug, Settings } from "lucide-react";
+import { Eye, GitBranch, Plug, Settings, Tags } from "lucide-react";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -53,6 +53,11 @@ function RouteComponent() {
       title: t("settings:projectIntegrations.title"),
       icon: Plug,
       segment: "integrations",
+    },
+    {
+      title: t("settings:projectLabels.title", { defaultValue: "Labels" }),
+      icon: Tags,
+      segment: "labels",
     },
     {
       title: t("settings:projectWorkflow.title"),

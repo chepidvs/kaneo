@@ -197,6 +197,13 @@
 			"when": 1775245262351,
 			"tag": "0027_chilly_namorita",
 			"breakpoints": true
+		},
+		{
+			"idx": 28,
+			"version": "7",
+			"when": 1776930512724,
+			"tag": "0028_little_ben_parker",
+			"breakpoints": true
 		}
 	]
 }

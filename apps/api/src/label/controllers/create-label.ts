@@ -1,70 +1,48 @@
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
+import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { labelTable } from "../../database/schema";
-import { syncLabelToGitea } from "../../plugins/gitea/utils/sync-label-to-gitea";
-import { syncLabelToGitHub } from "../../plugins/github/utils/sync-label-to-github";
 
-async function createLabel(
-  name: string,
-  color: string,
-  taskId: string | undefined,
-  workspaceId: string,
-) {
-  if (taskId) {
-    const [inserted] = await db
-      .insert(labelTable)
-      .values({ name, color, taskId, workspaceId })
-      .onConflictDoNothing({
-        target: [labelTable.taskId, labelTable.name],
-      })
-      .returning();
+function normalizeLabelName(name: string) {
+  return name.trim().replace(/\s+/g, " ");
+}
 
-    const label =
-      inserted ??
-      (await db.query.labelTable.findFirst({
-        where: and(eq(labelTable.taskId, taskId), eq(labelTable.name, name)),
-      }));
+async function createLabel(name: string, color: string, projectId: string) {
+  const normalizedName = normalizeLabelName(name);
 
-    if (!label) {
-      throw new Error("Failed to create or resolve label");
-    }
+  if (!normalizedName) {
+    throw new HTTPException(400, {
+      message: "Label name is required",
+    });
+  }
 
-    if (inserted) {
-      syncLabelToGitHub(taskId, name, color).catch((error) => {
-        console.error("Failed to sync label to GitHub:", error);
-      });
-      syncLabelToGitea(taskId, name, color).catch((error) => {
-        console.error("Failed to sync label to Gitea:", error);
-      });
-    }
+  const existingLabel = await db.query.labelTable.findFirst({
+    where: and(
+      eq(labelTable.projectId, projectId),
+      sql`lower(${labelTable.name}) = lower(${normalizedName})`,
+    ),
+  });
 
-    return label;
+  if (existingLabel) {
+    return existingLabel;
   }
 
   const [inserted] = await db
     .insert(labelTable)
-    .values({ name, color, taskId: null, workspaceId })
-    .onConflictDoNothing({
-      target: [labelTable.workspaceId, labelTable.name],
-      where: sql`${labelTable.taskId} is null`,
+    .values({
+      name: normalizedName,
+      color,
+      projectId,
     })
     .returning();
 
-  const label =
-    inserted ??
-    (await db.query.labelTable.findFirst({
-      where: and(
-        eq(labelTable.workspaceId, workspaceId),
-        eq(labelTable.name, name),
-        isNull(labelTable.taskId),
-      ),
-    }));
-
-  if (!label) {
-    throw new Error("Failed to create or resolve label");
+  if (!inserted) {
+    throw new HTTPException(500, {
+      message: "Failed to create label",
+    });
   }
 
-  return label;
+  return inserted;
 }
 
 export default createLabel;

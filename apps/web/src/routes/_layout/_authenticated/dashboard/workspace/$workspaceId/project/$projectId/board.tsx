@@ -11,7 +11,7 @@ import CreateTaskModal from "@/components/shared/modals/create-task-modal";
 import TaskDetailsSheet from "@/components/task/task-details-sheet";
 import { Input } from "@/components/ui/input";
 import { shortcuts } from "@/constants/shortcuts";
-import useGetLabelsByWorkspace from "@/hooks/queries/label/use-get-labels-by-workspace";
+import useGetLabelsByProject from "@/hooks/queries/label/use-get-labels-by-project";
 import { useGetTasks } from "@/hooks/queries/task/use-get-tasks";
 import { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
 import { useRegisterShortcuts } from "@/hooks/use-keyboard-shortcuts";
@@ -43,26 +43,26 @@ const skeletonColumns = [
 
 function BoardSkeleton() {
   return (
-    <div className="flex h-full w-full gap-4 p-4 overflow-hidden">
+    <div className="flex h-full w-full gap-4 overflow-hidden p-4">
       {skeletonColumns.map((col) => (
         <div key={col.key} className="flex w-72 shrink-0 flex-col gap-3">
           <div className="flex items-center gap-2 px-1">
-            <div className="h-3 w-3 rounded-full bg-muted animate-pulse" />
-            <div className="h-4 w-24 rounded bg-muted animate-pulse" />
-            <div className="h-4 w-5 rounded bg-muted animate-pulse" />
+            <div className="h-3 w-3 animate-pulse rounded-full bg-muted" />
+            <div className="h-4 w-24 animate-pulse rounded bg-muted" />
+            <div className="h-4 w-5 animate-pulse rounded bg-muted" />
           </div>
           <div className="flex flex-col gap-2.5">
             {Array.from({ length: col.cards }, (_, i) => `${col.key}-${i}`).map(
               (cardKey) => (
                 <div
                   key={cardKey}
-                  className="rounded-lg border border-border bg-card p-3 space-y-2.5"
+                  className="space-y-2.5 rounded-lg border border-border bg-card p-3"
                 >
-                  <div className="h-3.5 w-4/5 rounded bg-muted animate-pulse" />
-                  <div className="h-3 w-3/5 rounded bg-muted animate-pulse" />
+                  <div className="h-3.5 w-4/5 animate-pulse rounded bg-muted" />
+                  <div className="h-3 w-3/5 animate-pulse rounded bg-muted" />
                   <div className="flex items-center gap-2 pt-1">
-                    <div className="h-5 w-5 rounded-full bg-muted animate-pulse" />
-                    <div className="h-3 w-16 rounded bg-muted animate-pulse" />
+                    <div className="h-5 w-5 animate-pulse rounded-full bg-muted" />
+                    <div className="h-3 w-16 animate-pulse rounded bg-muted" />
                   </div>
                 </div>
               ),
@@ -94,7 +94,7 @@ function RouteComponent() {
   });
 
   const { data: users } = useGetActiveWorkspaceUsers(workspaceId);
-  const { data: workspaceLabels = [] } = useGetLabelsByWorkspace(workspaceId);
+  const { data: projectLabels = [] } = useGetLabelsByProject(projectId);
 
   const handleCloseTaskSheet = useCallback(() => {
     navigate({
@@ -219,7 +219,7 @@ function RouteComponent() {
         title={`${project?.name} — ${viewMode === "board" ? t("tasks:view.board") : t("tasks:view.list")}`}
         hideAppName
       />
-      <div className="relative flex flex-col h-full min-h-0 overflow-hidden">
+      <div className="relative flex h-full min-h-0 flex-col overflow-hidden">
         <BoardToolbar
           project={project}
           filters={filters}
@@ -228,7 +228,7 @@ function RouteComponent() {
           clearFilters={clearFilters}
           hasActiveFilters={hasActiveFilters}
           users={users}
-          workspaceLabels={workspaceLabels}
+          projectLabels={projectLabels}
           viewMode={viewMode}
           setViewMode={setViewMode}
           sort={sort}

@@ -1,5 +1,5 @@
 import { createId } from "@paralleldrive/cuid2";
-import { relations, sql } from "drizzle-orm";
+import { relations } from "drizzle-orm";
 import {
   boolean,
   foreignKey,
@@ -459,6 +459,12 @@ export const labelTable = pgTable(
     id: text("id")
       .$defaultFn(() => createId())
       .primaryKey(),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => projectTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
     name: text("name").notNull(),
     color: text("color").notNull(),
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
@@ -466,22 +472,37 @@ export const labelTable = pgTable(
       .defaultNow()
       .$onUpdate(() => new Date())
       .notNull(),
-    taskId: text("task_id").references(() => taskTable.id, {
-      onDelete: "cascade",
-      onUpdate: "cascade",
-    }),
-    workspaceId: text("workspace_id").references(() => workspaceTable.id, {
-      onDelete: "cascade",
-      onUpdate: "cascade",
-    }),
   },
   (table) => [
-    index("label_task_id_idx").on(table.taskId),
-    index("label_workspace_id_idx").on(table.workspaceId),
-    unique("label_task_name_unique").on(table.taskId, table.name),
-    uniqueIndex("label_workspace_name_unique")
-      .on(table.workspaceId, table.name)
-      .where(sql`${table.taskId} is null`),
+    index("label_project_id_idx").on(table.projectId),
+    uniqueIndex("label_project_name_unique").on(table.projectId, table.name),
+  ],
+);
+
+export const taskLabelTable = pgTable(
+  "task_label",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    taskId: text("task_id")
+      .notNull()
+      .references(() => taskTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    labelId: text("label_id")
+      .notNull()
+      .references(() => labelTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("task_label_task_id_idx").on(table.taskId),
+    index("task_label_label_id_idx").on(table.labelId),
+    uniqueIndex("task_label_task_label_unique").on(table.taskId, table.labelId),
   ],
 );
 

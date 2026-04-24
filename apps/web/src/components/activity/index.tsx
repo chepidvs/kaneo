@@ -1,4 +1,4 @@
-import { Calendar, CircleAlert, History, UserRound } from "lucide-react";
+import { Calendar, CircleAlert, History, Tag, UserRound } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import useGetWorkspaceUsers from "@/hooks/queries/workspace-users/use-get-workspace-users";
@@ -56,6 +56,9 @@ function getActivityTypeIcon(type: string) {
       return <CircleAlert className={iconClass} />;
     case "due_date_changed":
       return <Calendar className={iconClass} />;
+    case "label_added":
+    case "label_removed":
+      return <Tag className={iconClass} />;
     case "assignee_changed":
     case "unassigned":
       return <UserRound className={iconClass} />;
@@ -283,6 +286,32 @@ function renderActivityContent({
     return <span className="text-sm text-muted-foreground">{content}</span>;
   }
 
+  if (activity.type === "label_added") {
+    const labelName = String(eventData?.labelName ?? content ?? "").trim();
+
+    return (
+      <span className="text-sm text-muted-foreground">
+        Added label{" "}
+        <span className="font-medium text-foreground">
+          {labelName || "Unknown"}
+        </span>
+      </span>
+    );
+  }
+
+  if (activity.type === "label_removed") {
+    const labelName = String(eventData?.labelName ?? content ?? "").trim();
+
+    return (
+      <span className="text-sm text-muted-foreground">
+        Removed label{" "}
+        <span className="font-medium text-foreground">
+          {labelName || "Unknown"}
+        </span>
+      </span>
+    );
+  }
+
   if (activity.type === "unassigned") {
     return (
       <span className="text-sm text-muted-foreground">
@@ -463,7 +492,7 @@ function Activity({
           workspaceUsers: workspaceUsers as WorkspaceUser[] | undefined,
           t,
         })}{" "}
-        <span className="whitespace-nowrap text-muted-foreground/70 text-xs">
+        <span className="whitespace-nowrap text-xs text-muted-foreground/70">
           {formatRelativeTime(activity.createdAt)}
         </span>
       </TimelineContent>

@@ -14,6 +14,7 @@ import {
   notificationTable,
   projectTable,
   sessionTable,
+  taskLabelTable,
   taskRelationTable,
   taskReminderSentTable,
   taskTable,
@@ -100,6 +101,7 @@ export const projectTableRelations = relations(
       fields: [projectTable.workspaceId],
       references: [workspaceTable.id],
     }),
+    labels: many(labelTable),
     tasks: many(taskTable),
     assets: many(assetTable),
     columns: many(columnTable),
@@ -150,7 +152,7 @@ export const taskTableRelations = relations(taskTable, ({ one, many }) => ({
   activities: many(activityTable),
   comments: many(commentTable),
   assets: many(assetTable),
-  labels: many(labelTable),
+  taskLabels: many(taskLabelTable),
   externalLinks: many(externalLinkTable),
   sourceRelations: many(taskRelationTable, { relationName: "sourceTask" }),
   targetRelations: many(taskRelationTable, { relationName: "targetTask" }),
@@ -202,10 +204,22 @@ export const assetTableRelations = relations(assetTable, ({ one }) => ({
   }),
 }));
 
-export const labelTableRelations = relations(labelTable, ({ one }) => ({
+export const labelTableRelations = relations(labelTable, ({ one, many }) => ({
+  project: one(projectTable, {
+    fields: [labelTable.projectId],
+    references: [projectTable.id],
+  }),
+  taskLabels: many(taskLabelTable),
+}));
+
+export const taskLabelTableRelations = relations(taskLabelTable, ({ one }) => ({
   task: one(taskTable, {
-    fields: [labelTable.taskId],
+    fields: [taskLabelTable.taskId],
     references: [taskTable.id],
+  }),
+  label: one(labelTable, {
+    fields: [taskLabelTable.labelId],
+    references: [labelTable.id],
   }),
 }));
 

@@ -26,7 +26,7 @@ import { getPriorityIcon } from "@/lib/priority";
 import type { SortConfig } from "@/lib/sort-tasks";
 import type { ProjectWithTasks } from "@/types/project";
 
-type WorkspaceLabel = {
+type ProjectLabel = {
   id: string;
   name: string;
   color: string;
@@ -53,7 +53,7 @@ type BoardToolbarProps = {
   clearFilters: () => void;
   hasActiveFilters: boolean;
   users?: ActiveUsers;
-  workspaceLabels: WorkspaceLabel[];
+  projectLabels?: ProjectLabel[];
   viewMode: "board" | "list";
   setViewMode: (mode: "board" | "list") => void;
   sort: SortConfig;
@@ -137,22 +137,34 @@ export default function BoardToolbar({
   clearFilters,
   hasActiveFilters,
   users,
-  workspaceLabels,
+  projectLabels,
   viewMode,
   setViewMode,
   sort,
   onSortChange,
 }: BoardToolbarProps) {
   const { t } = useTranslation();
-  const selectedStatusIds = filters.status ?? [];
-  const selectedPriorityIds = filters.priority ?? [];
-  const selectedAssigneeIds = filters.assignee ?? [];
-  const selectedDueDateFilters = filters.dueDate ?? [];
+
+  const selectedStatusIds = Array.isArray(filters?.status)
+    ? filters.status
+    : [];
+  const selectedPriorityIds = Array.isArray(filters?.priority)
+    ? filters.priority
+    : [];
+  const selectedAssigneeIds = Array.isArray(filters?.assignee)
+    ? filters.assignee
+    : [];
+  const selectedDueDateFilters = Array.isArray(filters?.dueDate)
+    ? filters.dueDate
+    : [];
+  const selectedLabelIds = Array.isArray(filters?.labels) ? filters.labels : [];
+  const safeProjectLabels = Array.isArray(projectLabels) ? projectLabels : [];
 
   const getStatusDisplayName = (statusId: string) => {
     const column = project?.columns?.find((col) => col.id === statusId);
     return column?.name || statusId;
   };
+
   const getStatusIcon = (statusId: string) => {
     const column = project?.columns?.find((col) => col.id === statusId);
     return getColumnIcon(statusId, column?.isFinal);
@@ -165,6 +177,7 @@ export default function BoardToolbar({
     const member = users?.members?.find((m) => m.userId === userId);
     return member?.user?.name || t("common:people.unknown");
   };
+
   const getAssigneeAvatar = (userId: string) => {
     const member = users?.members?.find((m) => m.userId === userId);
     return (
@@ -180,21 +193,8 @@ export default function BoardToolbar({
     );
   };
 
-  const uniqueLabels = workspaceLabels.reduce(
-    (acc: WorkspaceLabel[], label: WorkspaceLabel) => {
-      const existing = acc.find(
-        (l) => l.name === label.name && l.color === label.color,
-      );
-      if (!existing) acc.push(label);
-      return acc;
-    },
-    [],
-  );
-
-  const isLabelGroupSelected = (label: { name: string; color: string }) => {
-    return workspaceLabels
-      .filter((l) => l.name === label.name && l.color === label.color)
-      .some((l) => filters.labels?.includes(l.id));
+  const isLabelSelected = (labelId: string) => {
+    return selectedLabelIds.includes(labelId);
   };
 
   const toggleStatusFilter = (statusId: string) => {
@@ -229,25 +229,15 @@ export default function BoardToolbar({
     updateFilter("dueDate", next.length > 0 ? next : null);
   };
 
-  const toggleLabelGroup = (label: { name: string; color: string }) => {
-    const matching = workspaceLabels.filter(
-      (l) => l.name === label.name && l.color === label.color,
-    );
-    const anySelected = matching.some((l) => filters.labels?.includes(l.id));
-
-    for (const l of matching) {
-      if (
-        (anySelected && filters.labels?.includes(l.id)) ||
-        (!anySelected && !filters.labels?.includes(l.id))
-      ) {
-        updateLabelFilter(l.id);
-      }
-    }
+  const toggleLabel = (labelId: string) => {
+    updateLabelFilter(labelId);
   };
 
   const clearLabelFilters = () => {
-    if (!filters.labels || filters.labels.length === 0) return;
-    for (const labelId of filters.labels) updateLabelFilter(labelId);
+    if (selectedLabelIds.length === 0) return;
+    for (const labelId of selectedLabelIds) {
+      updateLabelFilter(labelId);
+    }
   };
 
   return (
@@ -267,6 +257,7 @@ export default function BoardToolbar({
                 <Filter className="h-3 w-3" />
                 {t("common:actions.filter")}
               </DropdownMenuTrigger>
+
               <DropdownMenuContent className="w-56" align="start">
                 <DropdownMenuGroup>
                   <DropdownMenuLabel className="text-[11px] uppercase tracking-wide">
@@ -293,6 +284,7 @@ export default function BoardToolbar({
                         <CheckSlot checked={selectedStatusIds.length === 0} />
                         {t("tasks:boardFilters.allStatuses")}
                       </button>
+
                       {project?.columns?.map((column) => (
                         <button
                           key={column.id}
@@ -335,6 +327,7 @@ export default function BoardToolbar({
                         <CheckSlot checked={selectedPriorityIds.length === 0} />
                         {t("tasks:boardFilters.allPriorities")}
                       </button>
+
                       {["urgent", "high", "medium", "low"].map((priority) => (
                         <button
                           key={priority}
@@ -379,6 +372,7 @@ export default function BoardToolbar({
                         <CheckSlot checked={selectedAssigneeIds.length === 0} />
                         {t("tasks:boardFilters.allAssignees")}
                       </button>
+
                       {users?.members?.map((member) => (
                         <button
                           key={member.userId}
@@ -433,6 +427,7 @@ export default function BoardToolbar({
                         />
                         {t("tasks:boardFilters.allDueDates")}
                       </button>
+
                       {[
                         DUE_DATE_FILTER_VALUES.dueThisWeek,
                         DUE_DATE_FILTER_VALUES.dueNextWeek,
@@ -475,20 +470,20 @@ export default function BoardToolbar({
                       onClick={clearLabelFilters}
                       className="h-8 rounded-md text-sm"
                     >
-                      <CheckSlot
-                        checked={!filters.labels || filters.labels.length === 0}
-                      />
+                      <CheckSlot checked={selectedLabelIds.length === 0} />
                       {t("tasks:boardFilters.allLabels")}
                     </DropdownMenuItem>
+
                     <DropdownMenuSeparator />
-                    {uniqueLabels.length > 0 ? (
-                      uniqueLabels.map((label) => (
+
+                    {safeProjectLabels.length > 0 ? (
+                      safeProjectLabels.map((label) => (
                         <DropdownMenuItem
                           key={label.id}
-                          onClick={() => toggleLabelGroup(label)}
+                          onClick={() => toggleLabel(label.id)}
                           className="h-8 rounded-md text-sm"
                         >
-                          <CheckSlot checked={isLabelGroupSelected(label)} />
+                          <CheckSlot checked={isLabelSelected(label.id)} />
                           <span
                             className="h-2.5 w-2.5 shrink-0 rounded-full"
                             style={{
@@ -630,12 +625,12 @@ export default function BoardToolbar({
               />
             )}
 
-            {filters.labels && filters.labels.length > 0 && (
+            {selectedLabelIds.length > 0 && (
               <ActiveFilterChip
                 subject={t("tasks:boardFilters.subjects.labels")}
                 operator={t("tasks:boardFilters.operators.includeAnyOf")}
                 value={t("tasks:boardFilters.selectedCount", {
-                  count: filters.labels.length,
+                  count: selectedLabelIds.length,
                 })}
                 onClear={clearLabelFilters}
               />

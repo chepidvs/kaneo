@@ -313,4 +313,36 @@ subscribeToEvent<{
   });
 });
 
+subscribeToEvent<{
+  taskId: string;
+  projectId: string;
+  userId: string;
+  labelId: string;
+  labelName: string;
+  labelColor: string;
+  type: string;
+}>("task.label_added", async (data) => {
+  await createActivity(data.taskId, data.type, data.userId, null, {
+    labelId: data.labelId,
+    labelName: data.labelName,
+    labelColor: data.labelColor,
+  });
+});
+
+subscribeToEvent<{
+  taskId: string;
+  projectId: string;
+  userId: string;
+  labelId: string;
+  labelName: string;
+  labelColor: string;
+  type: string;
+}>("task.label_removed", async (data) => {
+  await createActivity(data.taskId, data.type, data.userId, null, {
+    labelId: data.labelId,
+    labelName: data.labelName,
+    labelColor: data.labelColor,
+  });
+});
+
 export default activity;

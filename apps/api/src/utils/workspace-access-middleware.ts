@@ -36,6 +36,10 @@ async function readJsonObjectBody(
   return raw as Record<string, unknown>;
 }
 
+function getStringValue(value: unknown): string | null {
+  return typeof value === "string" ? value : null;
+}
+
 export function workspaceAccessMiddleware(
   config: WorkspaceAccessMiddlewareConfig,
 ) {
@@ -50,19 +54,20 @@ export function workspaceAccessMiddleware(
 
     for (const source of config.sources) {
       if (source.type === "query") {
-        workspaceId = c.req.query(source.key) || null;
+        workspaceId = getStringValue(c.req.query(source.key));
       } else if (source.type === "body") {
         const body = await readJsonObjectBody(c);
-        workspaceId =
-          typeof body[source.key] === "string" ? body[source.key] : null;
+        workspaceId = getStringValue(body[source.key]);
       } else if (source.type === "param") {
-        workspaceId = c.req.param(source.key) || null;
+        workspaceId = getStringValue(c.req.param(source.key));
       } else if (source.type === "lookup") {
         const body = await readJsonObjectBody(c);
-        const idFromBody =
-          typeof body[source.idKey] === "string" ? body[source.idKey] : null;
+        const idFromBody = getStringValue(body[source.idKey]);
         const id =
-          c.req.param(source.idKey) || c.req.query(source.idKey) || idFromBody;
+          getStringValue(c.req.param(source.idKey)) ??
+          getStringValue(c.req.query(source.idKey)) ??
+          idFromBody;
+
         if (id) {
           workspaceId = await lookupWorkspaceId(source.resource, id);
         }
@@ -130,8 +135,14 @@ async function lookupWorkspaceId(
 
       case "label": {
         const [label] = await db
-          .select({ workspaceId: schema.labelTable.workspaceId })
+          .select({
+            workspaceId: schema.projectTable.workspaceId,
+          })
           .from(schema.labelTable)
+          .innerJoin(
+            schema.projectTable,
+            eq(schema.labelTable.projectId, schema.projectTable.id),
+          )
           .where(eq(schema.labelTable.id, id))
           .limit(1);
         return label?.workspaceId || null;
@@ -239,6 +250,11 @@ export const workspaceAccess = {
 
   fromBody: (key = "workspaceId") =>
     workspaceAccessMiddleware({ sources: [{ type: "body", key }] }),
+
+  fromProjectIdInBody: (key = "projectId") =>
+    workspaceAccessMiddleware({
+      sources: [{ type: "lookup", resource: "project", idKey: key }],
+    }),
 
   fromParam: (key = "workspaceId") =>
     workspaceAccessMiddleware({ sources: [{ type: "param", key }] }),

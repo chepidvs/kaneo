@@ -105,7 +105,7 @@ function buildContentDisposition(filename: string) {
       .normalize("NFKD")
       .replace(/[\u0300-\u036f]/g, "")
       .replace(/[\\/]/g, "-")
-      .replace(/[^\x20-\u7E]+/g, "_")
+      .replace(/[^\x20-\x7E]+/g, "_")
       .replace(/\s+/g, " ")
       .trim() || "file";
   const encodedFilename = encodeURIComponent(safeFilename).replace(
@@ -410,7 +410,11 @@ export function createApp() {
       const headers = new Headers(c.req.raw.headers);
 
       // Better Auth API key plugin validates from x-api-key by default.
-      headers.set("x-api-key", bearerMatch[1]);
+      const apiKey = bearerMatch[1];
+      if (!apiKey) {
+        return auth.handler(c.req.raw);
+      }
+      headers.set("x-api-key", apiKey);
 
       return auth.handler(
         new Request(c.req.raw, {
@@ -595,9 +599,11 @@ const {
   workspaceApi,
 } = createdApp;
 
+const entryFile = process.argv[1];
+
 const isMainModule =
-  Boolean(process.argv[1]) &&
-  import.meta.url === pathToFileURL(process.argv[1]).href;
+  typeof entryFile === "string" &&
+  import.meta.url === pathToFileURL(entryFile).href;
 
 if (isMainModule) {
   void startServer();

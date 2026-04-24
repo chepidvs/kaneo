@@ -8,11 +8,15 @@ import createLabel from "./controllers/create-label";
 import deleteLabel from "./controllers/delete-label";
 import getLabel from "./controllers/get-label";
 import getLabelsByTaskId from "./controllers/get-labels-by-task-id";
-import getLabelsByWorkspaceId from "./controllers/get-labels-by-workspace-id";
+import getLabelsByProjectId from "./controllers/get-labels-by-workspace-id";
 import unassignLabelFromTask from "./controllers/unassign-label-from-task";
 import updateLabel from "./controllers/update-label";
 
-const label = new Hono()
+const label = new Hono<{
+  Variables: {
+    userId: string;
+  };
+}>()
   .get(
     "/task/:taskId",
     describeRoute({
@@ -37,25 +41,25 @@ const label = new Hono()
     },
   )
   .get(
-    "/workspace/:workspaceId",
+    "/project/:projectId",
     describeRoute({
-      operationId: "getWorkspaceLabels",
+      operationId: "getProjectLabels",
       tags: ["Labels"],
-      description: "Get all labels for a specific workspace",
+      description: "Get all labels for a specific project",
       responses: {
         200: {
-          description: "List of labels in the workspace",
+          description: "List of labels in the project",
           content: {
             "application/json": { schema: resolver(v.array(labelSchema)) },
           },
         },
       },
     }),
-    validator("param", v.object({ workspaceId: v.string() })),
-    workspaceAccess.fromParam(),
+    validator("param", v.object({ projectId: v.string() })),
+    workspaceAccess.fromProject("projectId"),
     async (c) => {
-      const { workspaceId } = c.req.valid("param");
-      const labels = await getLabelsByWorkspaceId(workspaceId);
+      const { projectId } = c.req.valid("param");
+      const labels = await getLabelsByProjectId(projectId);
       return c.json(labels);
     },
   )
@@ -64,7 +68,7 @@ const label = new Hono()
     describeRoute({
       operationId: "createLabel",
       tags: ["Labels"],
-      description: "Create a new label in a workspace",
+      description: "Create a new label in a project",
       responses: {
         200: {
           description: "Label created successfully",
@@ -79,14 +83,13 @@ const label = new Hono()
       v.object({
         name: v.string(),
         color: v.string(),
-        workspaceId: v.string(),
-        taskId: v.optional(v.string()),
+        projectId: v.string(),
       }),
     ),
-    workspaceAccess.fromBody(),
+    workspaceAccess.fromProjectIdInBody("projectId"),
     async (c) => {
-      const { name, color, workspaceId, taskId } = c.req.valid("json");
-      const label = await createLabel(name, color, taskId, workspaceId);
+      const { name, color, projectId } = c.req.valid("json");
+      const label = await createLabel(name, color, projectId);
       return c.json(label);
     },
   )
@@ -134,7 +137,8 @@ const label = new Hono()
     async (c) => {
       const { id } = c.req.valid("param");
       const { taskId } = c.req.valid("json");
-      const label = await assignLabelToTask(id, taskId);
+      const userId = c.get("userId") as string;
+      const label = await assignLabelToTask(id, taskId, userId);
       return c.json(label);
     },
   )
@@ -157,7 +161,8 @@ const label = new Hono()
     workspaceAccess.fromLabel(),
     async (c) => {
       const { id } = c.req.valid("param");
-      const label = await unassignLabelFromTask(id);
+      const userId = c.get("userId") as string;
+      const label = await unassignLabelFromTask(id, userId);
       return c.json(label);
     },
   )
