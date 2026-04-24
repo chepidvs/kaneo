@@ -25,14 +25,13 @@ FROM "task"
 WHERE "label"."task_id" = "task"."id";
 --> statement-breakpoint
 UPDATE "label"
-SET "project_id" = project_pick."id"
-FROM LATERAL (
+SET "project_id" = (
   SELECT "project"."id"
   FROM "project"
   WHERE "project"."workspace_id" = "label"."workspace_id"
   ORDER BY "project"."created_at" ASC
   LIMIT 1
-) AS project_pick
+)
 WHERE "label"."project_id" IS NULL
   AND "label"."workspace_id" IS NOT NULL;
 --> statement-breakpoint
