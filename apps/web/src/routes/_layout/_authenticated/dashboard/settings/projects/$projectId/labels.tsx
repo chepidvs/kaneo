@@ -1,11 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import getLabelsByProject from "@/fetchers/label/get-labels-by-project";
-import createLabel from "@/fetchers/label/create-label";
-import updateLabel from "@/fetchers/label/update-label";
-import deleteLabel from "@/fetchers/label/delete-label";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import createLabel from "@/fetchers/label/create-label";
+import deleteLabel from "@/fetchers/label/delete-label";
+import getLabelsByProject from "@/fetchers/label/get-labels-by-project";
+import updateLabel from "@/fetchers/label/update-label";
 
 export const Route = createFileRoute(
   "/_layout/_authenticated/dashboard/settings/projects/$projectId/labels",
@@ -42,7 +42,7 @@ function LabelsPage() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  async function loadLabels() {
+  const loadLabels = useCallback(async () => {
     setIsLoading(true);
     try {
       const data = await getLabelsByProject({ projectId });
@@ -52,11 +52,11 @@ function LabelsPage() {
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [projectId]);
 
   useEffect(() => {
     void loadLabels();
-  }, [projectId]);
+  }, [loadLabels]);
 
   async function handleCreate() {
     if (isCreating) return;

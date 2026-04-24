@@ -1,14 +1,12 @@
 import { client } from "@kaneo/libs";
 import type { InferRequestType } from "hono/client";
 
-export type AttachLabelToTaskRequest =
-  InferRequestType<(typeof client)["label"][":id"]["task"]["$put"]>["param"] &
-    InferRequestType<(typeof client)["label"][":id"]["task"]["$put"]>["json"];
+export type AttachLabelToTaskRequest = InferRequestType<
+  (typeof client)["label"][":id"]["task"]["$put"]
+>["param"] &
+  InferRequestType<(typeof client)["label"][":id"]["task"]["$put"]>["json"];
 
-async function attachLabelToTask({
-  id,
-  taskId,
-}: AttachLabelToTaskRequest) {
+async function attachLabelToTask({ id, taskId }: AttachLabelToTaskRequest) {
   const response = await client.label[":id"].task.$put({
     param: { id },
     json: { taskId },

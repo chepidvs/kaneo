@@ -536,7 +536,9 @@ function CreateTaskModal({
 
   const toggleLabel = (label: ProjectLabel) => {
     setLabels((currentLabels) => {
-      const alreadySelected = currentLabels.some((item) => item.id === label.id);
+      const alreadySelected = currentLabels.some(
+        (item) => item.id === label.id,
+      );
 
       if (alreadySelected) {
         return currentLabels.filter((item) => item.id !== label.id);

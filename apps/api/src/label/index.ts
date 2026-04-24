@@ -160,11 +160,11 @@ const label = new Hono<{
     validator("param", v.object({ id: v.string() })),
     workspaceAccess.fromLabel(),
     async (c) => {
-  const { id } = c.req.valid("param");
-  const userId = c.get("userId") as string;
-  const label = await unassignLabelFromTask(id, userId);
-  return c.json(label);
-},
+      const { id } = c.req.valid("param");
+      const userId = c.get("userId") as string;
+      const label = await unassignLabelFromTask(id, userId);
+      return c.json(label);
+    },
   )
   .put(
     "/:id",

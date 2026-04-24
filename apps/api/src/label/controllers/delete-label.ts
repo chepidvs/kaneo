@@ -2,8 +2,8 @@ import { eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { labelTable, taskLabelTable } from "../../database/schema";
-import { removeLabelFromGitHub } from "../../plugins/github/utils/sync-label-to-github";
 import { removeLabelFromGitea } from "../../plugins/gitea/utils/sync-label-to-gitea";
+import { removeLabelFromGitHub } from "../../plugins/github/utils/sync-label-to-github";
 
 async function deleteLabel(id: string) {
   const label = await db.query.labelTable.findFirst({

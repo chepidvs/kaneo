@@ -7,11 +7,7 @@ function normalizeLabelName(name: string) {
   return name.trim().replace(/\s+/g, " ");
 }
 
-async function createLabel(
-  name: string,
-  color: string,
-  projectId: string,
-) {
+async function createLabel(name: string, color: string, projectId: string) {
   const normalizedName = normalizeLabelName(name);
 
   if (!normalizedName) {

@@ -38,7 +38,7 @@ function RouteComponent() {
   const { workspace, role } = useWorkspacePermission();
   const location = useLocation();
   const navigate = useNavigate();
-    const menuItems = [
+  const menuItems = [
     {
       title: t("settings:projectGeneral.title"),
       icon: Settings,

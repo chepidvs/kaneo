@@ -1,10 +1,10 @@
 import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
+import { taskLabelTable } from "../../database/schema";
 import { publishEvent } from "../../events";
-import { labelTable, taskLabelTable, taskTable } from "../../database/schema";
-import { removeLabelFromGitHub } from "../../plugins/github/utils/sync-label-to-github";
 import { removeLabelFromGitea } from "../../plugins/gitea/utils/sync-label-to-gitea";
+import { removeLabelFromGitHub } from "../../plugins/github/utils/sync-label-to-github";
 
 async function unassignLabelFromTask(id: string, userId?: string) {
   const taskLabel = await db.query.taskLabelTable.findFirst({

@@ -72,7 +72,8 @@ export default function CommentCard({
   const canManageOthersComment = isOwner || isAdmin;
 
   const canEdit = isOwnComment && !isExternalComment;
-  const canDelete = !isExternalComment && (isOwnComment || canManageOthersComment);
+  const canDelete =
+    !isExternalComment && (isOwnComment || canManageOthersComment);
 
   const githubProfileUrl =
     isFromGitHub && user?.name ? `https://github.com/${user.name}` : null;

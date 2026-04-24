@@ -10,8 +10,8 @@ import {
 import useAttachLabelToTask from "@/hooks/mutations/label/use-attach-label-to-task";
 import useCreateLabel from "@/hooks/mutations/label/use-create-label";
 import useDetachLabelFromTask from "@/hooks/mutations/label/use-detach-label-from-task";
-import useGetLabelsByTask from "@/hooks/queries/label/use-get-labels-by-task";
 import useGetLabelsByProject from "@/hooks/queries/label/use-get-labels-by-project";
+import useGetLabelsByTask from "@/hooks/queries/label/use-get-labels-by-task";
 import { cn } from "@/lib/cn";
 import { toast } from "@/lib/toast";
 import type Task from "@/types/task";
@@ -296,9 +296,7 @@ export default function TaskLabelsPopover({
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild={!triggerNativeButton}>
-        {children}
-      </PopoverTrigger>
+      <PopoverTrigger asChild={!triggerNativeButton}>{children}</PopoverTrigger>
       <PopoverContent className="w-[240px] p-0" align="start">
         {step === "select" ? renderSelectStep() : renderColorStep()}
       </PopoverContent>

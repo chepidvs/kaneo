@@ -411,10 +411,10 @@ export function createApp() {
 
       // Better Auth API key plugin validates from x-api-key by default.
       const apiKey = bearerMatch[1];
-if (!apiKey) {
-  return auth.handler(c.req.raw);
-}
-headers.set("x-api-key", apiKey);
+      if (!apiKey) {
+        return auth.handler(c.req.raw);
+      }
+      headers.set("x-api-key", apiKey);
 
       return auth.handler(
         new Request(c.req.raw, {

@@ -1,16 +1,12 @@
 import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
+import { taskLabelTable } from "../../database/schema";
 import { publishEvent } from "../../events";
-import { labelTable, taskLabelTable, taskTable } from "../../database/schema";
 import { syncLabelToGitea } from "../../plugins/gitea/utils/sync-label-to-gitea";
 import { syncLabelToGitHub } from "../../plugins/github/utils/sync-label-to-github";
 
-async function assignLabelToTask(
-  id: string,
-  taskId: string,
-  userId?: string,
-) {
+async function assignLabelToTask(id: string, taskId: string, userId?: string) {
   const label = await db.query.labelTable.findFirst({
     where: (label, { eq }) => eq(label.id, id),
   });

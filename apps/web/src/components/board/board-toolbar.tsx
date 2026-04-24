@@ -157,9 +157,7 @@ export default function BoardToolbar({
   const selectedDueDateFilters = Array.isArray(filters?.dueDate)
     ? filters.dueDate
     : [];
-  const selectedLabelIds = Array.isArray(filters?.labels)
-    ? filters.labels
-    : [];
+  const selectedLabelIds = Array.isArray(filters?.labels) ? filters.labels : [];
   const safeProjectLabels = Array.isArray(projectLabels) ? projectLabels : [];
 
   const getStatusDisplayName = (statusId: string) => {
