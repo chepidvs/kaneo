@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 import Layout from "@/components/common/layout";
+import NotificationDropdown from "@/components/notification/notification-dropdown"; // ✅ TAMBAHIN INI
+
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -58,7 +60,9 @@ export default function WorkspaceLayout({
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
+
             <div className="mx-1.5 h-4 w-px shrink-0 bg-border/80" />
+
             <Breadcrumb className="flex items-center gap-1 text-xs w-full">
               <BreadcrumbList>
                 <BreadcrumbItem>
@@ -77,11 +81,15 @@ export default function WorkspaceLayout({
               </BreadcrumbList>
             </Breadcrumb>
           </div>
+
+          {/* RIGHT SIDE HEADER */}
           <div className={`${cn("flex items-center gap-1.5", className)}`}>
+            <NotificationDropdown /> {/* ✅ BELL NOTIF */}
             {headerActions}
           </div>
         </div>
       </Layout.Header>
+
       <Layout.Content>{children}</Layout.Content>
     </Layout>
   );
