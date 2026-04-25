@@ -82,6 +82,13 @@ function buildDeliveryContent(notification: {
           : "A new task was created in Kaneo.",
       };
     }
+    case "task_comment_created": {
+      const comment = getStringValue(notification.eventData, "comment");
+      return {
+        title: "New task comment",
+        body: comment ?? "A new comment was added to a task in Kaneo.",
+      };
+    }
     case "workspace_created": {
       const workspaceName = getStringValue(
         notification.eventData,
@@ -455,7 +462,7 @@ export async function deliverNotification(
     },
   };
 
-  const deliveries: Array<Promise<void>> = [];
+  const deliveries: Array<Promise<unknown>> = [];
 
   if (decryptedPreference.emailEnabled && rule.emailEnabled && user.email) {
     deliveries.push(

@@ -1,6 +1,9 @@
+import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { describeRoute, resolver, validator } from "hono-openapi";
 import * as v from "valibot";
+import db from "../database";
+import { projectTable, workspaceUserTable } from "../database/schema";
 import { subscribeToEvent } from "../events";
 import { notificationSchema } from "../schemas";
 import clearNotifications from "./controllers/clear-notifications";
@@ -77,7 +80,9 @@ const notification = new Hono<{
         relatedEntityId,
         relatedEntityType,
       } = c.req.valid("json");
+
       const userId = c.get("userId");
+
       const notification = await createNotification({
         userId,
         title,
@@ -87,6 +92,7 @@ const notification = new Hono<{
         resourceId: relatedEntityId,
         resourceType: relatedEntityType,
       });
+
       return c.json(notification);
     },
   )
@@ -173,6 +179,48 @@ subscribeToEvent<{
       resourceType: "task",
     });
   }
+});
+
+subscribeToEvent<{
+  taskId: string;
+  userId: string;
+  comment: string;
+  projectId: string;
+}>("task.comment_created", async (data) => {
+  console.log("[notification] task.comment_created received", data);
+
+  const [project] = await db
+    .select({ workspaceId: projectTable.workspaceId })
+    .from(projectTable)
+    .where(eq(projectTable.id, data.projectId))
+    .limit(1);
+
+  if (!project) {
+    return;
+  }
+
+  const members = await db
+    .select({ userId: workspaceUserTable.userId })
+    .from(workspaceUserTable)
+    .where(eq(workspaceUserTable.workspaceId, project.workspaceId));
+
+  console.log("[notification] comment recipients", members);
+
+  await Promise.all(
+    members
+      .filter((member) => member.userId !== data.userId)
+      .map((member) =>
+        createNotification({
+          userId: member.userId,
+          type: "task_comment_created",
+          eventData: {
+            comment: data.comment,
+          },
+          resourceId: data.taskId,
+          resourceType: "task",
+        }),
+      ),
+  );
 });
 
 subscribeToEvent<{
