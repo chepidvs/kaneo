@@ -1,6 +1,13 @@
+import { useNavigate } from "@tanstack/react-router";
 import { Bell } from "lucide-react";
-import { forwardRef, useImperativeHandle, useState } from "react";
-import { useTranslation } from "react-i18next";
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from "react";
 import {
   AlertDialog,
   AlertDialogClose,
@@ -18,6 +25,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/menu";
+import { toastManager } from "@/components/ui/toast";
 import {
   Tooltip,
   TooltipContent,
@@ -31,11 +39,18 @@ import useGetNotifications from "@/hooks/queries/notification/use-get-notificati
 import { useRegisterShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { cn } from "@/lib/cn";
 import { formatRelativeTime } from "@/lib/format";
-import { getStatusLabel } from "@/lib/i18n/domain";
 import type { Notification } from "@/types/notification";
 
 export type NotificationDropdownRef = {
   toggle: () => void;
+};
+
+type NotificationGroup = {
+  id: string;
+  latest: Notification;
+  notifications: Notification[];
+  count: number;
+  unreadCount: number;
 };
 
 function getEventDataRecord(
@@ -48,105 +63,169 @@ function getEventDataRecord(
   return eventData as Record<string, unknown>;
 }
 
-function getNotificationTitle(
-  notification: Notification,
-  t: (key: string, options?: Record<string, unknown>) => string,
-) {
+function getNotificationGroupKey(notification: Notification) {
   const eventData = getEventDataRecord(notification.eventData);
-  if (eventData) {
-    switch (notification.type) {
-      case "task_created":
-        return t("notifications:events.task_created.title", {
-          ...eventData,
-          defaultValue: notification.title ?? notification.type,
-        });
-      case "workspace_created":
-        return t("notifications:events.workspace_created.title", {
-          ...eventData,
-          defaultValue: notification.title ?? notification.type,
-        });
-      case "task_status_changed":
-        return t("notifications:events.task_status_changed.title", {
-          ...eventData,
-          defaultValue: notification.title ?? notification.type,
-        });
-      case "task_assignee_changed":
-        return t("notifications:events.task_assignee_changed.title", {
-          ...eventData,
-          defaultValue: notification.title ?? notification.type,
-        });
-      case "time_entry_created":
-        return t("notifications:events.time_entry_created.title", {
-          ...eventData,
-          defaultValue: notification.title ?? notification.type,
-        });
-      default:
-        break;
+  const taskId = eventData?.taskId;
+
+  if (
+    (notification.type === "task_comment_created" ||
+      notification.type === "task_created") &&
+    taskId
+  ) {
+    return `${notification.type}:${String(taskId)}`;
+  }
+
+  return notification.id;
+}
+
+function groupNotifications(notifications: Notification[]) {
+  const groups = new Map<string, NotificationGroup>();
+
+  notifications.forEach((notification) => {
+    const key = getNotificationGroupKey(notification);
+    const existing = groups.get(key);
+
+    if (!existing) {
+      groups.set(key, {
+        id: key,
+        latest: notification,
+        notifications: [notification],
+        count: 1,
+        unreadCount: notification.isRead ? 0 : 1,
+      });
+      return;
     }
+
+    existing.notifications.push(notification);
+    existing.count += 1;
+
+    if (!notification.isRead) {
+      existing.unreadCount += 1;
+    }
+  });
+
+  return Array.from(groups.values());
+}
+
+function getNotificationTitle(notification: Notification) {
+  const eventData = getEventDataRecord(notification.eventData);
+
+  if (notification.type === "task_comment_created") {
+    const userName = eventData?.userName;
+    return userName ? `${String(userName)} commented` : "New task comment";
+  }
+
+  if (notification.type === "task_created") {
+    return "New task created";
   }
 
   return notification.title ?? notification.type;
 }
 
-function getNotificationContent(
-  notification: Notification,
-  t: (key: string, options?: Record<string, unknown>) => string,
-) {
+function getNotificationContent(notification: Notification) {
   const eventData = getEventDataRecord(notification.eventData);
-  if (eventData) {
-    switch (notification.type) {
-      case "task_created":
-        return t("notifications:events.task_created.content", {
-          ...eventData,
-          defaultValue: notification.content ?? "",
-        });
-      case "workspace_created":
-        return t("notifications:events.workspace_created.content", {
-          ...eventData,
-          defaultValue: notification.content ?? "",
-        });
-      case "task_status_changed":
-        return t("notifications:events.task_status_changed.content", {
-          ...eventData,
-          oldStatus: getStatusLabel(String(eventData.oldStatus ?? "")),
-          newStatus: getStatusLabel(String(eventData.newStatus ?? "")),
-          defaultValue: notification.content ?? "",
-        });
-      case "task_assignee_changed":
-        return t("notifications:events.task_assignee_changed.content", {
-          ...eventData,
-          defaultValue: notification.content ?? "",
-        });
-      case "time_entry_created":
-        return eventData.taskTitle
-          ? t("notifications:events.time_entry_created.contentWithTask", {
-              ...eventData,
-              defaultValue: notification.content ?? "",
-            })
-          : t("notifications:events.time_entry_created.contentWithoutTask", {
-              ...eventData,
-              defaultValue: notification.content ?? "",
-            });
-      default:
-        break;
-    }
+
+  if (notification.type === "task_comment_created" && eventData?.comment) {
+    return String(eventData.comment);
+  }
+
+  if (notification.type === "task_created" && eventData?.taskTitle) {
+    return String(eventData.taskTitle);
   }
 
   return notification.content ?? "";
 }
 
+function getGroupTitle(group: NotificationGroup) {
+  if (group.latest.type === "task_comment_created" && group.count > 1) {
+    return `${group.count} comments on this task`;
+  }
+
+  return getNotificationTitle(group.latest);
+}
+
+function getGroupContent(group: NotificationGroup) {
+  return getNotificationContent(group.latest);
+}
+
 const NotificationDropdown = forwardRef<NotificationDropdownRef>(
   (_props, ref) => {
-    const { t } = useTranslation();
+    const navigate = useNavigate();
+
     const { data: notifications } = useGetNotifications();
     const [isOpen, setIsOpen] = useState(false);
     const [showClearDialog, setShowClearDialog] = useState(false);
+    const previousNotificationIds = useRef<Set<string> | null>(null);
 
     const { mutate: markAllAsRead } = useMarkAllNotificationsAsRead();
     const { mutate: clearAll } = useClearNotifications();
 
     const unreadNotifications = notifications?.filter((n) => !n.isRead) || [];
     const hasNotifications = notifications && notifications.length > 0;
+    const notificationGroups = notifications
+      ? groupNotifications(notifications)
+      : [];
+
+    const handleNotificationClick = useCallback(
+      (notification: Notification) => {
+        const eventData = getEventDataRecord(notification.eventData);
+
+        markAllAsRead();
+        setIsOpen(false);
+
+        if (
+          (notification.type === "task_comment_created" ||
+            notification.type === "task_created") &&
+          eventData?.taskId
+        ) {
+          navigate({
+            to: "/dashboard/workspace/$workspaceId/project/$projectId/task/$taskId",
+            params: {
+              workspaceId: String(eventData.workspaceId),
+              projectId: String(eventData.projectId),
+              taskId: String(eventData.taskId),
+            },
+          });
+        }
+      },
+      [markAllAsRead, navigate],
+    );
+
+    useEffect(() => {
+      if (!notifications) return;
+
+      if (!previousNotificationIds.current) {
+        previousNotificationIds.current = new Set(
+          notifications.map((notification) => notification.id),
+        );
+        return;
+      }
+
+      const newNotifications = notifications.filter(
+        (notification) =>
+          !previousNotificationIds.current?.has(notification.id) &&
+          !notification.isRead,
+      );
+
+      const newNotificationGroups = groupNotifications(newNotifications);
+
+      newNotificationGroups.forEach((group) => {
+        toastManager.add({
+          title: getGroupTitle(group),
+          description: getGroupContent(group),
+          type: "info",
+          timeout: 8000,
+          actionProps: {
+            children: "Open",
+            onClick: () => handleNotificationClick(group.latest),
+          },
+        });
+      });
+
+      previousNotificationIds.current = new Set(
+        notifications.map((notification) => notification.id),
+      );
+    }, [notifications, handleNotificationClick]);
 
     useImperativeHandle(ref, () => ({
       toggle: () => setIsOpen(!isOpen),
@@ -181,9 +260,6 @@ const NotificationDropdown = forwardRef<NotificationDropdownRef>(
                     {unreadNotifications.length > 0 && (
                       <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-destructive" />
                     )}
-                    <span className="sr-only">
-                      {t("navigation:notifications")}
-                    </span>
                   </Button>
                 </DropdownMenuTrigger>
               </TooltipTrigger>
@@ -194,7 +270,6 @@ const NotificationDropdown = forwardRef<NotificationDropdownRef>(
                       shortcuts.notification.prefix,
                       shortcuts.notification.open,
                     ]}
-                    description={t("notifications:shortcuts.open")}
                   />
                 </p>
               </TooltipContent>
@@ -203,23 +278,23 @@ const NotificationDropdown = forwardRef<NotificationDropdownRef>(
 
           <DropdownMenuContent align="end" className="w-80 p-0">
             <div className="flex items-center justify-between px-3 py-2 border-b">
-              <h3 className="font-medium text-sm">
-                {t("notifications:title")}
-              </h3>
+              <h3 className="font-medium text-sm">Notifications</h3>
+
               {unreadNotifications.length > 0 && (
                 <div className="flex items-center gap-2">
                   <Badge variant="secondary" className="text-xs">
-                    {t("notifications:newCount", {
-                      count: unreadNotifications.length,
-                    })}
+                    {unreadNotifications.length} new
                   </Badge>
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => markAllAsRead()}
+                    onClick={() => {
+                      markAllAsRead();
+                      setIsOpen(false);
+                    }}
                     className="text-xs h-6 px-2"
                   >
-                    {t("common:actions.markAllRead")}
+                    Mark all read
                   </Button>
                 </div>
               )}
@@ -229,53 +304,64 @@ const NotificationDropdown = forwardRef<NotificationDropdownRef>(
               {!hasNotifications ? (
                 <div className="p-6 text-center text-sm text-muted-foreground">
                   <Bell className="mx-auto h-12 w-12 opacity-50 mb-2" />
-                  <p>{t("notifications:emptyTitle")}</p>
-                  <p className="text-xs mt-1">
-                    {t("notifications:emptySubtitle")}
-                  </p>
+                  <p>No notifications</p>
                 </div>
               ) : (
-                notifications.map((notification) => (
-                  <div
-                    key={notification.id}
+                notificationGroups.map((group) => (
+                  <button
+                    type="button"
+                    key={group.id}
+                    onClick={() => handleNotificationClick(group.latest)}
                     className={cn(
-                      "px-3 py-3 border-b border-border/50 hover:bg-accent/50 transition-colors",
-                      !notification.isRead && "bg-accent/20",
+                      "w-full text-left px-3 py-3 border-b border-border/50 hover:bg-accent/50 transition-colors cursor-pointer",
+                      group.unreadCount > 0 && "bg-accent/20",
                     )}
                   >
                     <div className="flex items-start gap-3">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <h4 className="text-sm font-medium text-foreground">
-                            {getNotificationTitle(notification, t)}
+                          <h4 className="text-sm font-medium">
+                            {getGroupTitle(group)}
                           </h4>
-                          {!notification.isRead && (
-                            <div className="w-2 h-2 bg-primary rounded-full flex-shrink-0" />
+
+                          {group.unreadCount > 0 && (
+                            <div className="w-2 h-2 bg-primary rounded-full" />
                           )}
                         </div>
-                        {getNotificationContent(notification, t) && (
+
+                        {getGroupContent(group) && (
                           <p className="text-xs text-muted-foreground line-clamp-2">
-                            {getNotificationContent(notification, t)}
+                            {getGroupContent(group)}
                           </p>
                         )}
-                        <p className="text-xs text-muted-foreground mt-2">
-                          {formatRelativeTime(notification.createdAt)}
-                        </p>
+
+                        <div className="flex items-center gap-2 mt-2">
+                          <p className="text-xs text-muted-foreground">
+                            {formatRelativeTime(group.latest.createdAt)}
+                          </p>
+
+                          {group.count > 1 && (
+                            <Badge variant="outline" className="text-[10px]">
+                              {group.count} updates
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  </button>
                 ))
               )}
             </div>
+
             {hasNotifications && (
               <div className="border-t border-border p-2">
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setShowClearDialog(true)}
-                  className="w-full text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
+                  className="w-full text-xs text-destructive"
                 >
-                  {t("notifications:clearAll")}
+                  Clear all notifications
                 </Button>
               </div>
             )}
@@ -285,23 +371,17 @@ const NotificationDropdown = forwardRef<NotificationDropdownRef>(
         <AlertDialog open={showClearDialog} onOpenChange={setShowClearDialog}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>
-                {t("notifications:clearDialogTitle")}
-              </AlertDialogTitle>
+              <AlertDialogTitle>Clear all notifications?</AlertDialogTitle>
               <AlertDialogDescription>
-                {t("notifications:clearDialogDescription")}
+                This action cannot be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogClose>
-                <Button variant="outline" size="sm">
-                  {t("common:actions.cancel")}
-                </Button>
+                <Button variant="outline">Cancel</Button>
               </AlertDialogClose>
               <AlertDialogClose onClick={handleClearAll}>
-                <Button variant="destructive" size="sm">
-                  {t("common:actions.clearAll")}
-                </Button>
+                <Button variant="destructive">Clear all</Button>
               </AlertDialogClose>
             </AlertDialogFooter>
           </AlertDialogContent>

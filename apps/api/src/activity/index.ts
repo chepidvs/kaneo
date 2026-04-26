@@ -121,7 +121,8 @@ const activity = new Hono<{
         await publishEvent("task.comment_created", {
           taskId,
           userId,
-          comment: `"${user?.name}" commented: ${comment}`,
+          comment,
+          userName: user?.name ?? "Someone",
           projectId: task.projectId,
         });
       }

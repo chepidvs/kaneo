@@ -41,12 +41,14 @@ const NotificationEmail = ({
   return (
     <EmailShell preview={copy.preview} title={title} subtitle={copy.subtitle}>
       <Section>
-        <Text style={styles.paragraph}>{message}</Text>
         {actionUrl ? (
           <Link style={styles.button} href={actionUrl}>
             {actionLabel ?? copy.actionLabel}
           </Link>
         ) : null}
+
+        <Text style={styles.paragraph}>{message}</Text>
+
         <Section style={styles.divider} />
         <Text style={styles.footer}>{copy.footer}</Text>
       </Section>

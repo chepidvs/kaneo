@@ -168,27 +168,6 @@ subscribeToEvent<{
   title: string;
   projectId: string;
 }>("task.created", async (data) => {
-  if (data.userId) {
-    await createNotification({
-      userId: data.userId,
-      type: "task_created",
-      eventData: {
-        taskTitle: data.title,
-      },
-      resourceId: data.taskId,
-      resourceType: "task",
-    });
-  }
-});
-
-subscribeToEvent<{
-  taskId: string;
-  userId: string;
-  comment: string;
-  projectId: string;
-}>("task.comment_created", async (data) => {
-  console.log("[notification] task.comment_created received", data);
-
   const [project] = await db
     .select({ workspaceId: projectTable.workspaceId })
     .from(projectTable)
@@ -204,7 +183,47 @@ subscribeToEvent<{
     .from(workspaceUserTable)
     .where(eq(workspaceUserTable.workspaceId, project.workspaceId));
 
-  console.log("[notification] comment recipients", members);
+  await Promise.all(
+    members
+      .filter((member) => member.userId !== data.userId)
+      .map((member) =>
+        createNotification({
+          userId: member.userId,
+          type: "task_created",
+          eventData: {
+            taskTitle: data.title,
+            taskId: data.taskId,
+            projectId: data.projectId,
+            workspaceId: project.workspaceId,
+          },
+          resourceId: data.taskId,
+          resourceType: "task",
+        }),
+      ),
+  );
+});
+
+subscribeToEvent<{
+  taskId: string;
+  userId: string;
+  comment: string;
+  userName: string;
+  projectId: string;
+}>("task.comment_created", async (data) => {
+  const [project] = await db
+    .select({ workspaceId: projectTable.workspaceId })
+    .from(projectTable)
+    .where(eq(projectTable.id, data.projectId))
+    .limit(1);
+
+  if (!project) {
+    return;
+  }
+
+  const members = await db
+    .select({ userId: workspaceUserTable.userId })
+    .from(workspaceUserTable)
+    .where(eq(workspaceUserTable.workspaceId, project.workspaceId));
 
   await Promise.all(
     members
@@ -214,7 +233,11 @@ subscribeToEvent<{
           userId: member.userId,
           type: "task_comment_created",
           eventData: {
+            userName: data.userName,
             comment: data.comment,
+            taskId: data.taskId,
+            projectId: data.projectId,
+            workspaceId: project.workspaceId,
           },
           resourceId: data.taskId,
           resourceType: "task",

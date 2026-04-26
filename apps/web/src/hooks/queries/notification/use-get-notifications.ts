@@ -5,6 +5,10 @@ function useGetNotifications() {
   return useQuery({
     queryKey: ["notifications"],
     queryFn: getNotifications,
+
+    // 🔥 realtime polling
+    refetchInterval: 10000, // 10 detik
+    refetchOnWindowFocus: true,
   });
 }
 
