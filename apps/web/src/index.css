@@ -258,7 +258,7 @@ input:-webkit-autofill:active {
   }
 
   .kaneo-mention-highlight {
-  color: #1b1c1d; /* biru */
+  color: #008295; /* biru */
   font-weight: 500;
   cursor: pointer;
 }
