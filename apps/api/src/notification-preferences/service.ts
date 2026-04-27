@@ -390,7 +390,10 @@ export async function updateNotificationPreferences(
       })
       .where(eq(userNotificationPreferenceTable.userId, userId));
   } else {
-    await db.insert(userNotificationPreferenceTable).values(data);
+    await db.insert(userNotificationPreferenceTable).values({
+      ...data,
+      emailEnabled: true,
+    });
   }
 
   const ruleCascade: {

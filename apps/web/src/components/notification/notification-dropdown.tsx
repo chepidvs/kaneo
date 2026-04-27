@@ -63,15 +63,19 @@ function getEventDataRecord(
   return eventData as Record<string, unknown>;
 }
 
+function isTaskNotification(notification: Notification) {
+  return (
+    notification.type === "task_comment_created" ||
+    notification.type === "task_mentioned" ||
+    notification.type === "task_created"
+  );
+}
+
 function getNotificationGroupKey(notification: Notification) {
   const eventData = getEventDataRecord(notification.eventData);
   const taskId = eventData?.taskId;
 
-  if (
-    (notification.type === "task_comment_created" ||
-      notification.type === "task_created") &&
-    taskId
-  ) {
+  if (isTaskNotification(notification) && taskId) {
     return `${notification.type}:${String(taskId)}`;
   }
 
@@ -110,6 +114,13 @@ function groupNotifications(notifications: Notification[]) {
 function getNotificationTitle(notification: Notification) {
   const eventData = getEventDataRecord(notification.eventData);
 
+  if (notification.type === "task_mentioned") {
+    const userName = eventData?.userName;
+    return userName
+      ? `${String(userName)} mentioned you`
+      : "You were mentioned";
+  }
+
   if (notification.type === "task_comment_created") {
     const userName = eventData?.userName;
     return userName ? `${String(userName)} commented` : "New task comment";
@@ -125,7 +136,11 @@ function getNotificationTitle(notification: Notification) {
 function getNotificationContent(notification: Notification) {
   const eventData = getEventDataRecord(notification.eventData);
 
-  if (notification.type === "task_comment_created" && eventData?.comment) {
+  if (
+    (notification.type === "task_comment_created" ||
+      notification.type === "task_mentioned") &&
+    eventData?.comment
+  ) {
     return String(eventData.comment);
   }
 
@@ -137,6 +152,10 @@ function getNotificationContent(notification: Notification) {
 }
 
 function getGroupTitle(group: NotificationGroup) {
+  if (group.latest.type === "task_mentioned" && group.count > 1) {
+    return `${group.count} mentions on this task`;
+  }
+
   if (group.latest.type === "task_comment_created" && group.count > 1) {
     return `${group.count} comments on this task`;
   }
@@ -173,11 +192,7 @@ const NotificationDropdown = forwardRef<NotificationDropdownRef>(
         markAllAsRead();
         setIsOpen(false);
 
-        if (
-          (notification.type === "task_comment_created" ||
-            notification.type === "task_created") &&
-          eventData?.taskId
-        ) {
+        if (isTaskNotification(notification) && eventData?.taskId) {
           navigate({
             to: "/dashboard/workspace/$workspaceId/project/$projectId/task/$taskId",
             params: {

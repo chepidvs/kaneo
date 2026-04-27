@@ -3,7 +3,11 @@ import { Hono } from "hono";
 import { describeRoute, resolver, validator } from "hono-openapi";
 import * as v from "valibot";
 import db from "../database";
-import { projectTable, workspaceUserTable } from "../database/schema";
+import {
+  projectTable,
+  userTable,
+  workspaceUserTable,
+} from "../database/schema";
 import { subscribeToEvent } from "../events";
 import { notificationSchema } from "../schemas";
 import clearNotifications from "./controllers/clear-notifications";
@@ -11,6 +15,26 @@ import createNotification from "./controllers/create-notification";
 import getNotifications from "./controllers/get-notifications";
 import markAllNotificationsAsRead from "./controllers/mark-all-notifications-as-read";
 import markAsRead from "./controllers/mark-notification-as-read";
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function normalizeMentionName(value: string) {
+  return value.trim().replace(/^@/, "").toLowerCase();
+}
+
+function isUserMentioned(comment: string, name: string | null) {
+  const normalizedName = normalizeMentionName(name ?? "");
+  if (!normalizedName) return false;
+
+  const mentionPattern = new RegExp(
+    `(^|\\s)@${escapeRegExp(normalizedName)}(?=\\s|$|[.,!?;:])`,
+    "i",
+  );
+
+  return mentionPattern.test(comment.toLowerCase());
+}
 
 const bulkResultSchema = v.object({
   success: v.boolean(),
@@ -209,6 +233,7 @@ subscribeToEvent<{
   comment: string;
   userName: string;
   projectId: string;
+  mentions?: string[];
 }>("task.comment_created", async (data) => {
   const [project] = await db
     .select({ workspaceId: projectTable.workspaceId })
@@ -221,9 +246,20 @@ subscribeToEvent<{
   }
 
   const members = await db
-    .select({ userId: workspaceUserTable.userId })
+    .select({
+      userId: workspaceUserTable.userId,
+      userName: userTable.name,
+    })
     .from(workspaceUserTable)
+    .innerJoin(userTable, eq(workspaceUserTable.userId, userTable.id))
     .where(eq(workspaceUserTable.workspaceId, project.workspaceId));
+
+  const mentionedUserIds = new Set([
+    ...(data.mentions ?? []),
+    ...members
+      .filter((member) => isUserMentioned(data.comment, member.userName))
+      .map((member) => member.userId),
+  ]);
 
   await Promise.all(
     members
@@ -231,7 +267,9 @@ subscribeToEvent<{
       .map((member) =>
         createNotification({
           userId: member.userId,
-          type: "task_comment_created",
+          type: mentionedUserIds.has(member.userId)
+            ? "task_mentioned"
+            : "task_comment_created",
           eventData: {
             userName: data.userName,
             comment: data.comment,

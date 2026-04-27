@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowUp, Paperclip } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import CommentEditor from "@/components/activity/comment-editor";
 import { Button } from "@/components/ui/button";
@@ -12,20 +12,65 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import useCreateComment from "@/hooks/mutations/comment/use-create-comment";
+import { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
 import { getModifierKeyText } from "@/hooks/use-keyboard-shortcuts";
 import { cn } from "@/lib/cn";
 import { toast } from "@/lib/toast";
 
 type CommentInputProps = {
   taskId: string;
+  workspaceId: string;
 };
 
-export default function CommentInput({ taskId }: CommentInputProps) {
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function normalizeMentionName(value: string) {
+  return value.trim().replace(/^@/, "").toLowerCase();
+}
+
+export default function CommentInput({
+  taskId,
+  workspaceId,
+}: CommentInputProps) {
   const { t } = useTranslation();
   const [content, setContent] = useState("");
   const [attachAction, setAttachAction] = useState<(() => void) | null>(null);
   const { mutateAsync: createComment, isPending } = useCreateComment();
   const queryClient = useQueryClient();
+  const { data: workspaceUsers } = useGetActiveWorkspaceUsers(workspaceId);
+
+  const mentionableMembers = useMemo(() => {
+    return workspaceUsers?.members ?? [];
+  }, [workspaceUsers?.members]);
+
+  const mentionedUserIds = useMemo(() => {
+    if (!content.trim() || mentionableMembers.length === 0) {
+      return [];
+    }
+
+    const normalizedContent = content.toLowerCase();
+
+    return Array.from(
+      new Set(
+        mentionableMembers
+          .filter((member) => {
+            const name = normalizeMentionName(member.user?.name ?? "");
+            if (!name) return false;
+
+            const mentionPattern = new RegExp(
+              `(^|\\s)@${escapeRegExp(name)}(?=\\s|$|[.,!?;:])`,
+              "i",
+            );
+
+            return mentionPattern.test(normalizedContent);
+          })
+          .map((member) => member.userId)
+          .filter(Boolean),
+      ),
+    );
+  }, [content, mentionableMembers]);
 
   const handleSubmit = useCallback(async () => {
     if (!content.trim()) {
@@ -37,6 +82,7 @@ export default function CommentInput({ taskId }: CommentInputProps) {
       await createComment({
         taskId,
         comment: content,
+        mentions: mentionedUserIds,
       });
 
       setContent("");
@@ -47,7 +93,7 @@ export default function CommentInput({ taskId }: CommentInputProps) {
       console.error("Failed to create comment:", error);
       toast.error(t("activity:comment.failedToAdd"));
     }
-  }, [content, createComment, queryClient, t, taskId]);
+  }, [content, createComment, mentionedUserIds, queryClient, t, taskId]);
 
   const handleAttachActionChange = useCallback(
     (nextAttachAction: (() => void) | null) => {

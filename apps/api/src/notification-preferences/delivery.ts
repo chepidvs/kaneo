@@ -84,9 +84,24 @@ function buildDeliveryContent(notification: {
     }
     case "task_comment_created": {
       const comment = getStringValue(notification.eventData, "comment");
+      const userName = getStringValue(notification.eventData, "userName");
+
       return {
         title: "New task comment",
-        body: comment ?? "A new comment was added to a task in Kaneo.",
+        body: comment
+          ? `${userName ?? "Someone"} commented: ${comment}`
+          : "A new comment was added to a task in Kaneo.",
+      };
+    }
+    case "task_mentioned": {
+      const comment = getStringValue(notification.eventData, "comment");
+      const userName = getStringValue(notification.eventData, "userName");
+
+      return {
+        title: "You were mentioned in a task",
+        body: comment
+          ? `${userName ?? "Someone"} mentioned you: ${comment}`
+          : `${userName ?? "Someone"} mentioned you in a task.`,
       };
     }
     case "workspace_created": {

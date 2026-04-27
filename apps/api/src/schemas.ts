@@ -86,6 +86,8 @@ export const notificationSchema = v.object({
   type: v.picklist([
     "info",
     "task_created",
+    "task_comment_created",
+    "task_mentioned",
     "workspace_created",
     "task_status_changed",
     "task_assignee_changed",
