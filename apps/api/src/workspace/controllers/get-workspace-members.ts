@@ -9,6 +9,7 @@ async function getWorkspaceMembers(workspaceId: string) {
       name: userTable.name,
       email: userTable.email,
       image: userTable.image,
+      username: userTable.username, // ✅ ADD THIS
       role: workspaceUserTable.role,
     })
     .from(workspaceUserTable)

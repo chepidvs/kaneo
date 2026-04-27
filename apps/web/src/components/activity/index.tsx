@@ -39,11 +39,18 @@ function getEventDataRecord(
 }
 
 type WorkspaceUser = {
+  id?: string;
+  name?: string | null;
+  email?: string | null;
+  image?: string | null;
+  username?: string | null;
+  role?: string;
   user?: {
     id?: string;
     name?: string | null;
     email?: string | null;
     image?: string | null;
+    username?: string | null;
   } | null;
 };
 
@@ -431,13 +438,15 @@ function Activity({
   });
 
   const user = activity.userId
-    ? workspaceUsers?.find(
-        (workspaceUser) => workspaceUser.user?.id === activity.userId,
+    ? (workspaceUsers as WorkspaceUser[] | undefined)?.find(
+        (workspaceUser) =>
+          workspaceUser.id === activity.userId ||
+          workspaceUser.user?.id === activity.userId,
       )
     : null;
 
   const isExternalComment = Boolean(activity.externalSource);
-  const actorName = user?.user?.name || t("common:people.someone");
+  const actorName = user?.name || t("common:people.someone");
 
   if (isCommentActivity(activity)) {
     const commentUser = isExternalComment
@@ -448,10 +457,10 @@ function Activity({
           image: activity.externalUserAvatar ?? undefined,
         }
       : {
-          id: user?.user?.id,
-          name: user?.user?.name,
-          email: user?.user?.email,
-          image: user?.user?.image,
+          id: user?.id ?? user?.user?.id,
+          name: user?.name ?? user?.user?.name,
+          email: user?.email ?? user?.user?.email,
+          image: user?.image ?? user?.user?.image,
         };
 
     return (

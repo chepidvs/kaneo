@@ -257,6 +257,12 @@ input:-webkit-autofill:active {
     z-index: 90;
   }
 
+  .kaneo-mention-highlight {
+  color: #1b1c1d; /* biru */
+  font-weight: 500;
+  cursor: pointer;
+}
+
   .kaneo-editor-quick-attach {
     position: absolute;
     right: 0.75rem;

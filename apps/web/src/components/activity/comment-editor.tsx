@@ -1,4 +1,4 @@
-import type { Editor } from "@tiptap/core";
+import { type Editor, Extension } from "@tiptap/core";
 import Image from "@tiptap/extension-image";
 import Link from "@tiptap/extension-link";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -9,7 +9,8 @@ import TableRow from "@tiptap/extension-table-row";
 import TaskList from "@tiptap/extension-task-list";
 import { Markdown } from "@tiptap/markdown";
 import { Fragment, Slice } from "@tiptap/pm/model";
-import { TextSelection } from "@tiptap/pm/state";
+import { Plugin, TextSelection } from "@tiptap/pm/state";
+import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
 import StarterKit from "@tiptap/starter-kit";
@@ -61,9 +62,19 @@ import { getSharedShikiHighlighter } from "@/lib/shiki-highlighter";
 import { toast } from "@/lib/toast";
 import { uploadTaskImage } from "@/lib/upload-task-image";
 
+type MentionableMember = {
+  id: string;
+  name: string;
+  email: string;
+  image?: string | null;
+  username?: string | null;
+  role?: string;
+};
+
 type CommentEditorProps = {
   value: string;
   onChange?: (value: string) => void;
+  mentionableMembers?: MentionableMember[];
   placeholder?: string;
   className?: string;
   contentClassName?: string;
@@ -94,6 +105,15 @@ type SlashCommand = {
 };
 
 type SlashMenuState = {
+  from: number;
+  to: number;
+  query: string;
+  top: number;
+  left: number;
+  selectedIndex: number;
+};
+
+type MentionMenuState = {
   from: number;
   to: number;
   query: string;
@@ -136,6 +156,46 @@ const COMMENT_SHIKI_LANGUAGE_ALIASES: Record<string, string> = {
   plaintext: "text",
 };
 
+const MentionHighlight = Extension.create({
+  name: "mentionHighlight",
+
+  addProseMirrorPlugins() {
+    return [
+      new Plugin({
+        props: {
+          decorations: (state) => {
+            const decorations: Decoration[] = [];
+            const mentionPattern =
+              /(^|\s)(@[a-z0-9_]{3,30})(?=\s|$|[.,!?;:])/gi;
+
+            state.doc.descendants((node, pos) => {
+              if (!node.isText || !node.text) return;
+
+              for (const match of node.text.matchAll(mentionPattern)) {
+                const prefixLength = match[1]?.length ?? 0;
+                const mention = match[2];
+                if (!mention) continue;
+
+                const matchIndex = match.index ?? 0;
+                const from = pos + matchIndex + prefixLength;
+                const to = from + mention.length;
+
+                decorations.push(
+                  Decoration.inline(from, to, {
+                    class: "kaneo-mention-highlight",
+                  }),
+                );
+              }
+            });
+
+            return DecorationSet.create(state.doc, decorations);
+          },
+        },
+      }),
+    ];
+  },
+});
+
 function normalizeMarkdown(markdown: string) {
   return markdown
     .replace(/\r\n/g, "\n")
@@ -157,6 +217,7 @@ type EmbedComposerState = {
 export default function CommentEditor({
   value,
   onChange,
+  mentionableMembers = [],
   placeholder,
   className,
   contentClassName,
@@ -195,6 +256,8 @@ export default function CommentEditor({
     editor: Editor;
     range?: SlashRange;
   } | null>(null);
+
+  const [mentionMenu, setMentionMenu] = useState<MentionMenuState | null>(null);
   const [slashMenu, setSlashMenu] = useState<SlashMenuState | null>(null);
   const [shikiHighlighter, setShikiHighlighter] = useState<Highlighter | null>(
     null,
@@ -570,6 +633,7 @@ export default function CommentEditor({
       autofocus: autoFocus,
       editable: !readOnly && !disabled,
       extensions: [
+        MentionHighlight,
         StarterKit.configure({
           heading: { levels: [1, 2, 3] },
           trailingNode: false,
@@ -977,6 +1041,61 @@ export default function CommentEditor({
         left,
         selectedIndex: current?.query === query ? current.selectedIndex : 0,
       }));
+      setMentionMenu(null);
+    },
+    [disabled, getOverlayPosition, readOnly],
+  );
+
+  const updateMentionMenu = useCallback(
+    (activeEditor: Editor) => {
+      if (readOnly || disabled) {
+        setMentionMenu(null);
+        return;
+      }
+
+      const { state, view } = activeEditor;
+      const { selection } = state;
+      if (!selection.empty) {
+        setMentionMenu(null);
+        return;
+      }
+
+      const { $from } = selection;
+      if (!$from.parent.isTextblock) {
+        setMentionMenu(null);
+        return;
+      }
+
+      const textBefore = $from.parent.textBetween(
+        0,
+        $from.parentOffset,
+        "\0",
+        "\0",
+      );
+      const match = textBefore.match(/(?:^|\s)@([^\s@]*)$/);
+      if (!match) {
+        setMentionMenu(null);
+        return;
+      }
+
+      const query = match[1] || "";
+      const matchText = match[0];
+      const startsWithSpace = matchText.startsWith(" ");
+      const mentionOffset =
+        $from.parentOffset - matchText.length + (startsWithSpace ? 1 : 0);
+      const from = $from.start() + mentionOffset;
+      const to = from + matchText.trimStart().length;
+      const { top, left } = getOverlayPosition(view, $from.pos);
+
+      setMentionMenu((current) => ({
+        from,
+        to,
+        query,
+        top,
+        left,
+        selectedIndex: current?.query === query ? current.selectedIndex : 0,
+      }));
+      setSlashMenu(null);
     },
     [disabled, getOverlayPosition, readOnly],
   );
@@ -984,19 +1103,20 @@ export default function CommentEditor({
   useEffect(() => {
     if (!editor) return;
     const syncSlash = () => updateSlashMenu(editor);
+    const syncMention = () => updateMentionMenu(editor);
+
     editor.on("selectionUpdate", syncSlash);
     editor.on("update", syncSlash);
+    editor.on("selectionUpdate", syncMention);
+    editor.on("update", syncMention);
 
     return () => {
       editor.off("selectionUpdate", syncSlash);
       editor.off("update", syncSlash);
+      editor.off("selectionUpdate", syncMention);
+      editor.off("update", syncMention);
     };
-  }, [editor, updateSlashMenu]);
-
-  useEffect(() => {
-    if (!editor) return;
-    editor.setEditable(!readOnly && !disabled);
-  }, [disabled, editor, readOnly]);
+  }, [editor, updateMentionMenu, updateSlashMenu]);
 
   useEffect(() => {
     if (!editor) return;
@@ -1173,6 +1293,20 @@ export default function CommentEditor({
     isCodeLanguageMenuOpen,
     updateHoveredCodeBlockFromElement,
   ]);
+
+  const filteredMentionMembers = useMemo(() => {
+    if (!mentionMenu) return [];
+
+    const q = mentionMenu.query.toLowerCase();
+
+    return mentionableMembers
+      .filter((member) => {
+        const username = member.username || "";
+        if (!username) return false;
+        return username.toLowerCase().includes(q);
+      })
+      .slice(0, 8);
+  }, [mentionMenu, mentionableMembers]);
 
   const groupedSlashCommands = useMemo(
     () => [
@@ -1678,6 +1812,53 @@ export default function CommentEditor({
           )}
         </div>
       )}
+      {mentionMenu &&
+        !readOnly &&
+        !disabled &&
+        filteredMentionMembers.length > 0 && (
+          <div
+            className="kaneo-tiptap-slash-menu"
+            style={{
+              top: mentionMenu.top,
+              left: mentionMenu.left,
+              position: slashMenuPosition,
+            }}
+          >
+            <div className="kaneo-tiptap-slash-group">
+              <div className="kaneo-tiptap-slash-group-title">Mention</div>
+              {filteredMentionMembers.map((member) => (
+                <button
+                  key={member.id}
+                  type="button"
+                  className="kaneo-tiptap-slash-item"
+                  onMouseDown={(event) => {
+                    event.preventDefault();
+                    if (!editor || !member.username) return;
+
+                    editor
+                      .chain()
+                      .focus()
+                      .deleteRange({
+                        from: mentionMenu.from,
+                        to: mentionMenu.to,
+                      })
+                      .insertContent(`@${member.username} `)
+                      .run();
+
+                    setMentionMenu(null);
+                  }}
+                >
+                  <span className="kaneo-tiptap-slash-label">
+                    @{member.username}
+                  </span>
+                  <span className="kaneo-tiptap-slash-shortcut">
+                    {member.name}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       {editor && embedComposer && (
         <div
           className="kaneo-embed-composer"

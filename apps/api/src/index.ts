@@ -45,6 +45,7 @@ import task from "./task";
 import taskRelation from "./task-relation";
 import telegramIntegration from "./telegram-integration";
 import timeEntry from "./time-entry";
+import user from "./user";
 import {
   authenticateApiRequest,
   resolveAssetBearerOrCookie,
@@ -481,6 +482,7 @@ export function createApp() {
   const workflowRuleApi = api.route("/workflow-rule", workflowRule);
   const invitationApi = api.route("/invitation", invitation);
   const workspaceApi = api.route("/workspace", workspace);
+  const userApi = api.route("/user", user);
 
   app.route(
     "/",
@@ -498,6 +500,7 @@ export function createApp() {
     app,
     api,
     activityApi,
+    userApi,
     columnApi,
     commentApi,
     configApi,

@@ -1,52 +1,33 @@
 import { useQuery } from "@tanstack/react-query";
-import { authClient } from "@/lib/auth-client";
+import { getApiUrl } from "@/fetchers/get-api-url";
 
 type GetWorkspaceUsersRequest = {
   workspaceId?: string;
-  limit?: number;
-  offset?: number;
-  sortBy?: string;
-  sortDirection?: "asc" | "desc";
-  filterField?: string;
-  filterOperator?: "eq" | "ne" | "gt" | "gte" | "lt" | "lte" | "contains";
-  filterValue?: string;
 };
 
-function useGetWorkspaceUsers({
-  workspaceId,
-  limit,
-  offset,
-  sortBy,
-  sortDirection,
-  filterField,
-  filterOperator,
-  filterValue,
-}: GetWorkspaceUsersRequest) {
+function useGetWorkspaceUsers({ workspaceId }: GetWorkspaceUsersRequest) {
   return useQuery({
-    queryKey: [
-      "workspace-users",
-      workspaceId,
-      limit,
-      offset,
-      sortBy,
-      sortDirection,
-      filterField,
-      filterOperator,
-      filterValue,
-    ],
+    queryKey: ["workspace-users", workspaceId],
     enabled: !!workspaceId,
     queryFn: async () => {
-      const { data, error } = await authClient.organization.listMembers({
-        query: {
-          organizationId: workspaceId,
-        },
+      const url = getApiUrl(`/workspace/${workspaceId}/members`);
+      console.log("fetch workspace members url:", url);
+
+      const response = await fetch(url, {
+        credentials: "include",
       });
 
-      if (error) {
-        throw new Error(error.message || "Failed to get workspace users");
+      if (!response.ok) {
+        const text = await response.text().catch(() => "");
+        console.error("workspace members fetch failed:", {
+          status: response.status,
+          url,
+          text,
+        });
+        throw new Error("Failed to fetch workspace users");
       }
 
-      return data.members;
+      return response.json();
     },
   });
 }

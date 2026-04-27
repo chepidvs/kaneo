@@ -12,7 +12,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import useCreateComment from "@/hooks/mutations/comment/use-create-comment";
-import { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
+import useGetWorkspaceUsers from "@/hooks/queries/workspace-users/use-get-workspace-users";
 import { getModifierKeyText } from "@/hooks/use-keyboard-shortcuts";
 import { cn } from "@/lib/cn";
 import { toast } from "@/lib/toast";
@@ -20,6 +20,15 @@ import { toast } from "@/lib/toast";
 type CommentInputProps = {
   taskId: string;
   workspaceId: string;
+};
+
+type WorkspaceMember = {
+  id: string;
+  name: string;
+  email: string;
+  image?: string | null;
+  username?: string | null;
+  role?: string;
 };
 
 function escapeRegExp(value: string) {
@@ -39,13 +48,24 @@ export default function CommentInput({
   const [attachAction, setAttachAction] = useState<(() => void) | null>(null);
   const { mutateAsync: createComment, isPending } = useCreateComment();
   const queryClient = useQueryClient();
-  const { data: workspaceUsers } = useGetActiveWorkspaceUsers(workspaceId);
 
-  const mentionableMembers = useMemo(() => {
-    return workspaceUsers?.members ?? [];
-  }, [workspaceUsers?.members]);
+  const { data: workspaceUsers } = useGetWorkspaceUsers({ workspaceId });
 
-  const mentionedUserIds = useMemo(() => {
+  const mentionableMembers = useMemo<WorkspaceMember[]>(() => {
+    if (!Array.isArray(workspaceUsers)) {
+      return [];
+    }
+
+    return workspaceUsers.filter(
+      (member): member is WorkspaceMember =>
+        typeof member === "object" &&
+        member !== null &&
+        "id" in member &&
+        typeof (member as WorkspaceMember).id === "string",
+    );
+  }, [workspaceUsers]);
+
+  const mentionedUserIds = useMemo<string[]>(() => {
     if (!content.trim() || mentionableMembers.length === 0) {
       return [];
     }
@@ -56,18 +76,18 @@ export default function CommentInput({
       new Set(
         mentionableMembers
           .filter((member) => {
-            const name = normalizeMentionName(member.user?.name ?? "");
-            if (!name) return false;
+            const username = normalizeMentionName(member.username ?? "");
+            if (!username) return false;
 
             const mentionPattern = new RegExp(
-              `(^|\\s)@${escapeRegExp(name)}(?=\\s|$|[.,!?;:])`,
+              `(^|\\s)@${escapeRegExp(username)}(?=\\s|$|[.,!?;:])`,
               "i",
             );
 
             return mentionPattern.test(normalizedContent);
           })
-          .map((member) => member.userId)
-          .filter(Boolean),
+          .map((member) => member.id)
+          .filter((id): id is string => Boolean(id)),
       ),
     );
   }, [content, mentionableMembers]);
@@ -108,6 +128,7 @@ export default function CommentInput({
         <CommentEditor
           value={content}
           onChange={setContent}
+          mentionableMembers={mentionableMembers}
           placeholder={t("activity:comment.leavePlaceholder")}
           taskId={taskId}
           uploadSurface="comment"

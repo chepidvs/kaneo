@@ -1,5 +1,5 @@
 import { standardSchemaResolver } from "@hookform/resolvers/standard-schema";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import { getApiUrl } from "@/fetchers/get-api-url";
 import useUpdateUserProfile from "@/hooks/mutations/use-update-user-profile";
 import { toast } from "@/lib/toast";
 
@@ -29,19 +30,42 @@ export const Route = createFileRoute(
 
 type ProfileFormValues = {
   name: string;
+  username: string;
   email: string;
 };
 
 type NormalizedProfileValues = {
   name: string;
+  username: string;
   email: string;
 };
+
+type CurrentUserProfile = {
+  id: string;
+  name: string;
+  email: string;
+  image?: string | null;
+  username?: string | null;
+};
+
+async function getCurrentUserProfile(): Promise<CurrentUserProfile> {
+  const response = await fetch(getApiUrl("/user/me"), {
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch current user profile");
+  }
+
+  return response.json();
+}
 
 function normalizeProfileValues(
   data: ProfileFormValues,
 ): NormalizedProfileValues {
   return {
     name: data.name.trim(),
+    username: data.username.trim().toLowerCase(),
     email: data.email,
   };
 }
@@ -55,11 +79,25 @@ function RouteComponent() {
   const isSavingRef = useRef(false);
   const queuedSaveRef = useRef<ProfileFormValues | null>(null);
   const lastSavedRef = useRef<NormalizedProfileValues | null>(null);
+
+  const { data: currentUserProfile } = useQuery({
+    queryKey: ["current-user-profile"],
+    queryFn: getCurrentUserProfile,
+    enabled: !!user,
+  });
+
   const profileSchema = z.object({
     name: z
       .string()
       .min(1, t("settings:informationPage.validation.nameRequired"))
       .min(2, t("settings:informationPage.validation.nameShort")),
+    username: z
+      .string()
+      .min(3, "Username must be at least 3 characters")
+      .regex(
+        /^[a-z0-9_]+$/,
+        "Username can only use lowercase letters, numbers, and underscore",
+      ),
     email: z
       .string()
       .email(t("settings:informationPage.validation.invalidEmail")),
@@ -70,29 +108,35 @@ function RouteComponent() {
     mode: "onChange",
     defaultValues: {
       name: user?.name || "",
+      username: "",
       email: user?.email || "",
     },
   });
 
   useEffect(() => {
-    if (!user) return;
+    if (!user && !currentUserProfile) return;
 
     const nextValues = {
-      name: user.name || "",
-      email: user.email || "",
+      name: currentUserProfile?.name || user?.name || "",
+      username: currentUserProfile?.username || "",
+      email: currentUserProfile?.email || user?.email || "",
     };
+
     lastSavedRef.current = normalizeProfileValues(nextValues);
 
     if (!profileForm.formState.isDirty) {
       profileForm.reset(nextValues);
     }
-  }, [user, profileForm]);
+  }, [user, currentUserProfile, profileForm]);
 
   const saveProfile = useCallback(
     async (data: ProfileFormValues) => {
       const normalizedData = normalizeProfileValues(data);
 
-      if (lastSavedRef.current?.name === normalizedData.name) {
+      if (
+        lastSavedRef.current?.name === normalizedData.name &&
+        lastSavedRef.current?.username === normalizedData.username
+      ) {
         return;
       }
 
@@ -106,6 +150,7 @@ function RouteComponent() {
       try {
         await updateProfile({
           name: normalizedData.name,
+          username: normalizedData.username,
         });
 
         profileForm.reset(normalizedData, { keepDirty: false });
@@ -113,6 +158,10 @@ function RouteComponent() {
         queuedSaveRef.current = null;
 
         await queryClient.invalidateQueries({ queryKey: ["session"] });
+        await queryClient.invalidateQueries({
+          queryKey: ["current-user-profile"],
+        });
+
         toast.success(t("settings:informationPage.updateSuccess"));
       } catch (error) {
         toast.error(
@@ -195,9 +244,14 @@ function RouteComponent() {
                 </p>
               </div>
               <Avatar className="h-10 w-10">
-                <AvatarImage src={user?.image ?? ""} alt={user?.name || ""} />
+                <AvatarImage
+                  src={currentUserProfile?.image ?? user?.image ?? ""}
+                  alt={currentUserProfile?.name || user?.name || ""}
+                />
                 <AvatarFallback className="text-xs font-medium border border-border/30">
-                  {user?.name?.charAt(0).toUpperCase()}
+                  {(currentUserProfile?.name || user?.name || "")
+                    .charAt(0)
+                    .toUpperCase()}
                 </AvatarFallback>
               </Avatar>
             </div>
@@ -236,6 +290,42 @@ function RouteComponent() {
 
                 <FormField
                   control={profileForm.control}
+                  name="username"
+                  render={({ field }) => (
+                    <FormItem>
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-sm font-medium">
+                            Username
+                          </FormLabel>
+                          <p className="text-xs text-muted-foreground">
+                            Used for mentions, example: @username
+                          </p>
+                        </div>
+                        <FormControl>
+                          <Input
+                            className="w-48"
+                            placeholder="username"
+                            {...field}
+                            onChange={(event) => {
+                              field.onChange(
+                                event.target.value
+                                  .toLowerCase()
+                                  .replace(/[^a-z0-9_]/g, ""),
+                              );
+                            }}
+                          />
+                        </FormControl>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <Separator />
+
+                <FormField
+                  control={profileForm.control}
                   name="email"
                   render={({ field }) => (
                     <FormItem>
@@ -253,7 +343,9 @@ function RouteComponent() {
                             )}
                             {...field}
                             disabled
-                            value={user?.email || ""}
+                            value={
+                              currentUserProfile?.email || user?.email || ""
+                            }
                           />
                         </FormControl>
                       </div>
