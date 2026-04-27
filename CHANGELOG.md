@@ -1,3 +1,22 @@
+## [2.7.0](https://github.com/chepidvs/kaneo/compare/v2.6.9...v2.7.0) (2026-04-27)
+
+### Features
+
+* **user:** add username system for all users
+* **user:** allow updating username via account settings
+* **api:** add custom endpoint for updating username (`/user/username`)
+* **workspace:** include username in workspace members response
+* **comment:** implement @username mention system
+* **editor:** add mention autocomplete dropdown
+* **editor:** add mention insertion via dropdown selection
+* **editor:** add mention highlighting in comment content
+
+### Fixes
+
+* **comment:** restore comment user avatar and name after schema update
+* **web:** ensure username persistence after refresh
+* **activity:** support both legacy and new user data structures
+
 ## [2.6.9](https://github.com/usekaneo/kaneo/compare/v2.6.8...v2.6.9) (2026-04-21)
 
 
