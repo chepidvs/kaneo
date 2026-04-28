@@ -10,6 +10,15 @@ import { Button } from "@/components/ui/button";
 import useGetFullWorkspace from "@/hooks/queries/workspace/use-get-full-workspace";
 import useGetWorkspaceUsers from "@/hooks/queries/workspace-users/use-get-workspace-users";
 
+type FlatWorkspaceUser = {
+  id: string;
+  name: string | null;
+  email: string;
+  image: string | null;
+  username: string | null;
+  role: string;
+};
+
 export const Route = createFileRoute(
   "/_layout/_authenticated/dashboard/workspace/$workspaceId/members",
 )({
