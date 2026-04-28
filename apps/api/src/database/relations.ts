@@ -12,6 +12,7 @@ import {
   invitationTable,
   labelTable,
   notificationTable,
+  projectMemberTable,
   projectTable,
   sessionTable,
   taskLabelTable,
@@ -32,6 +33,7 @@ import {
 } from "./schema";
 
 export const userTableRelations = relations(userTable, ({ many, one }) => ({
+  projectMemberships: many(projectMemberTable),
   sessions: many(sessionTable),
   accounts: many(accountTable),
   teamMembers: many(teamMemberTable),
@@ -71,6 +73,7 @@ export const verificationTableRelations = relations(
 export const workspaceTableRelations = relations(
   workspaceTable,
   ({ many }) => ({
+    projectMembers: many(projectMemberTable),
     teams: many(teamTable),
     members: many(workspaceUserTable),
     projects: many(projectTable),
@@ -101,6 +104,7 @@ export const projectTableRelations = relations(
       fields: [projectTable.workspaceId],
       references: [workspaceTable.id],
     }),
+    members: many(projectMemberTable),
     labels: many(labelTable),
     tasks: many(taskTable),
     assets: many(assetTable),
@@ -109,6 +113,24 @@ export const projectTableRelations = relations(
     githubIntegration: many(githubIntegrationTable),
     integrations: many(integrationTable),
     notificationWorkspaceProjects: many(userNotificationWorkspaceProjectTable),
+  }),
+);
+
+export const projectMemberTableRelations = relations(
+  projectMemberTable,
+  ({ one }) => ({
+    workspace: one(workspaceTable, {
+      fields: [projectMemberTable.workspaceId],
+      references: [workspaceTable.id],
+    }),
+    project: one(projectTable, {
+      fields: [projectMemberTable.projectId],
+      references: [projectTable.id],
+    }),
+    user: one(userTable, {
+      fields: [projectMemberTable.userId],
+      references: [userTable.id],
+    }),
   }),
 );
 

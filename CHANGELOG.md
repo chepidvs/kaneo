@@ -1,3 +1,34 @@
+## [2.7.1](https://github.com/chepidvs/kaneo/compare/v2.7.0...v2.7.1) (2026-04-28)
+
+### ✨ Features
+- Add Project Access control (private project member management)
+- Add Owner-only UI guard for Project Access section
+- Add edit member profile (name, username, avatar)
+- Display username in member list & edit modal
+
+### 🔐 Permissions
+- Restrict Project Access UI to Owner only
+- Restrict role management visibility (Owner only)
+- Improve role-based UI control consistency
+
+### 🛠 Improvements
+- Normalize workspace member data structure (user + profile)
+- Improve modal UI (spacing & layout)
+- Improve member profile handling (username support)
+
+### 🐛 Fixes
+- Fix username not showing in edit modal
+- Fix incorrect data mapping between API and UI
+- Fix MembersTable crash (undefined user.image)
+- Fix JSX errors in Project Access UI
+- Fix role dropdown visibility for non-owner
+
+---
+
+### 🧠 Notes
+- Using Option A for mention system (no dedicated DB yet)
+- Option B (scalable mention system) planned for next phase
+
 ## [2.7.0](https://github.com/chepidvs/kaneo/compare/v2.6.9...v2.7.0) (2026-04-27)
 
 ### Features

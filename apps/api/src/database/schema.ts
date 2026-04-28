@@ -223,6 +223,35 @@ export const projectTable = pgTable(
   ],
 );
 
+export const projectMemberTable = pgTable(
+  "project_member",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaceTable.id, { onDelete: "cascade" }),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => projectTable.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => userTable.id, { onDelete: "cascade" }),
+    role: text("role").default("member").notNull(),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("project_member_workspaceId_idx").on(table.workspaceId),
+    index("project_member_projectId_idx").on(table.projectId),
+    index("project_member_userId_idx").on(table.userId),
+    unique("project_member_project_user_unique").on(
+      table.projectId,
+      table.userId,
+    ),
+  ],
+);
+
 export const columnTable = pgTable(
   "column",
   {
@@ -882,6 +911,7 @@ export const workspace = workspaceTable;
 export const team = teamTable;
 export const teamMember = teamMemberTable;
 export const workspace_member = workspaceUserTable;
+export const project_member = projectMemberTable;
 export const invitation = invitationTable;
 export const apikey = apikeyTable;
 export const deviceCode = deviceCodeTable;

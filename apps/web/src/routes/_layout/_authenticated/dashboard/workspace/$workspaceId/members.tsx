@@ -8,6 +8,7 @@ import InviteTeamMemberModal from "@/components/team/invite-team-member-modal";
 import MembersTable from "@/components/team/members-table";
 import { Button } from "@/components/ui/button";
 import useGetFullWorkspace from "@/hooks/queries/workspace/use-get-full-workspace";
+import useGetWorkspaceUsers from "@/hooks/queries/workspace-users/use-get-workspace-users";
 
 export const Route = createFileRoute(
   "/_layout/_authenticated/dashboard/workspace/$workspaceId/members",
@@ -19,11 +20,25 @@ function RouteComponent() {
   const { t } = useTranslation();
   const { workspaceId } = Route.useParams();
   const { data: workspace } = useGetFullWorkspace({ workspaceId });
+  const { data: workspaceUsers } = useGetWorkspaceUsers({ workspaceId });
 
   const [isInviteTeamMemberModalOpen, setIsInviteTeamMemberModalOpen] =
     useState(false);
 
-  const users = workspace?.members;
+  const users =
+    workspaceUsers?.map((member: FlatWorkspaceUser) => ({
+      id: member.id,
+      userId: member.id,
+      role: member.role,
+      createdAt: null,
+      user: {
+        id: member.id,
+        name: member.name,
+        email: member.email,
+        image: member.image,
+        username: member.username,
+      },
+    })) ?? workspace?.members;
   const userInvitations = workspace?.invitations;
 
   return (

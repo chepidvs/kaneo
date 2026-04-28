@@ -204,6 +204,13 @@
 			"when": 1776930512724,
 			"tag": "0028_little_ben_parker",
 			"breakpoints": true
+		},
+		{
+			"idx": 29,
+			"version": "7",
+			"when": 1777367375719,
+			"tag": "0029_gifted_hercules",
+			"breakpoints": true
 		}
 	]
 }

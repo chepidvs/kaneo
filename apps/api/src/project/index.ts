@@ -8,6 +8,9 @@ import createProjectCtrl from "./controllers/create-project";
 import deleteProjectCtrl from "./controllers/delete-project";
 import getProjectCtrl from "./controllers/get-project";
 import getProjectsCtrl from "./controllers/get-projects";
+import addProjectMemberCtrl from "./controllers/members/add-project-member";
+import getProjectMembersCtrl from "./controllers/members/get-project-members";
+import removeProjectMemberCtrl from "./controllers/members/remove-project-member";
 import unarchiveProjectCtrl from "./controllers/unarchive-project";
 import updateProjectCtrl from "./controllers/update-project";
 
@@ -42,11 +45,15 @@ const project = new Hono<{
     workspaceAccess.fromQuery(),
     async (c) => {
       const workspaceId = c.get("workspaceId");
+      const userId = c.get("userId");
       const { includeArchived } = c.req.valid("query");
+
       const projects = await getProjectsCtrl(
         workspaceId,
+        userId,
         includeArchived === "true",
       );
+
       return c.json(projects);
     },
   )
@@ -78,7 +85,9 @@ const project = new Hono<{
     async (c) => {
       const { name, icon, slug } = c.req.valid("json");
       const workspaceId = c.get("workspaceId");
+
       const newProject = await createProjectCtrl(workspaceId, name, icon, slug);
+
       return c.json(newProject);
     },
   )
@@ -102,7 +111,10 @@ const project = new Hono<{
     async (c) => {
       const { id } = c.req.valid("param");
       const workspaceId = c.get("workspaceId");
-      const projectData = await getProjectCtrl(id, workspaceId);
+      const userId = c.get("userId");
+
+      const projectData = await getProjectCtrl(id, workspaceId, userId);
+
       return c.json(projectData);
     },
   )
@@ -137,6 +149,7 @@ const project = new Hono<{
       const { id } = c.req.valid("param");
       const { name, icon, slug, description, isPublic } = c.req.valid("json");
       const workspaceId = c.get("workspaceId");
+
       const updatedProject = await updateProjectCtrl(
         id,
         name,
@@ -146,6 +159,7 @@ const project = new Hono<{
         isPublic,
         workspaceId,
       );
+
       return c.json(updatedProject);
     },
   )
@@ -169,7 +183,9 @@ const project = new Hono<{
     async (c) => {
       const { id } = c.req.valid("param");
       const workspaceId = c.get("workspaceId");
+
       const deletedProject = await deleteProjectCtrl(id, workspaceId);
+
       return c.json(deletedProject);
     },
   )
@@ -193,7 +209,9 @@ const project = new Hono<{
     async (c) => {
       const { id } = c.req.valid("param");
       const workspaceId = c.get("workspaceId");
+
       const archivedProject = await archiveProjectCtrl(id, workspaceId);
+
       return c.json(archivedProject);
     },
   )
@@ -217,9 +235,106 @@ const project = new Hono<{
     async (c) => {
       const { id } = c.req.valid("param");
       const workspaceId = c.get("workspaceId");
+
       const unarchivedProject = await unarchiveProjectCtrl(id, workspaceId);
+
       return c.json(unarchivedProject);
     },
-  );
+  )
+  .get(
+    "/:id/members",
+    describeRoute({
+      operationId: "getProjectMembers",
+      tags: ["Projects"],
+      description: "Get project members",
+      responses: {
+        200: {
+          description: "List of project members",
+        },
+      },
+    }),
+    validator("param", v.object({ id: v.string() })),
+    workspaceAccess.fromProject(),
+    async (c) => {
+      const { id } = c.req.valid("param");
+      const workspaceId = c.get("workspaceId");
 
+      const members = await getProjectMembersCtrl(id, workspaceId);
+
+      return c.json(members);
+    },
+  )
+  .post(
+    "/:id/members",
+    describeRoute({
+      operationId: "addProjectMember",
+      tags: ["Projects"],
+      description: "Add or update project member access",
+      responses: {
+        200: {
+          description: "Project member added",
+        },
+      },
+    }),
+    validator("param", v.object({ id: v.string() })),
+    validator(
+      "json",
+      v.object({
+        userId: v.string(),
+        role: v.optional(v.string()),
+      }),
+    ),
+    workspaceAccess.fromProject(),
+    async (c) => {
+      const { id } = c.req.valid("param");
+      const { userId, role } = c.req.valid("json");
+      const workspaceId = c.get("workspaceId");
+      const actorUserId = c.get("userId");
+
+      const member = await addProjectMemberCtrl({
+        actorUserId,
+        workspaceId,
+        projectId: id,
+        userId,
+        role: role ?? "member",
+      });
+
+      return c.json(member);
+    },
+  )
+  .delete(
+    "/:id/members/:userId",
+    describeRoute({
+      operationId: "removeProjectMember",
+      tags: ["Projects"],
+      description: "Remove project member access",
+      responses: {
+        200: {
+          description: "Project member removed",
+        },
+      },
+    }),
+    validator(
+      "param",
+      v.object({
+        id: v.string(),
+        userId: v.string(),
+      }),
+    ),
+    workspaceAccess.fromProject(),
+    async (c) => {
+      const { id, userId } = c.req.valid("param");
+      const workspaceId = c.get("workspaceId");
+      const actorUserId = c.get("userId");
+
+      const result = await removeProjectMemberCtrl({
+        actorUserId,
+        workspaceId,
+        projectId: id,
+        userId,
+      });
+
+      return c.json(result);
+    },
+  );
 export default project;
