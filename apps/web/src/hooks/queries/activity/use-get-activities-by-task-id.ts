@@ -5,6 +5,9 @@ function useGetActivitiesByTaskId(taskId: string) {
   return useQuery({
     queryKey: ["activities", taskId],
     queryFn: () => getActivitesByTaskId({ taskId }),
+    enabled: Boolean(taskId),
+    refetchInterval: 5000,
+    refetchIntervalInBackground: true,
   });
 }
 

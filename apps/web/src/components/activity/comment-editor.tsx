@@ -1466,8 +1466,14 @@ export default function CommentEditor({
 
   const handleEditorMouseLeave = useCallback(
     (event: ReactMouseEvent<HTMLElement>) => {
-      const relatedTarget = event.relatedTarget as HTMLElement | null;
-      if (relatedTarget?.closest(".kaneo-codeblock-language")) return;
+      const relatedTarget = event.relatedTarget;
+
+      if (
+        relatedTarget instanceof HTMLElement &&
+        relatedTarget.closest(".kaneo-codeblock-language")
+      ) {
+        return;
+      }
       if (isCodeLanguageMenuOpen) return;
 
       if (codeLanguageHideTimeoutRef.current !== null) {

@@ -3,6 +3,7 @@ import { ArrowUp, Paperclip } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import CommentEditor from "@/components/activity/comment-editor";
+import { useAuth } from "@/components/providers/auth-provider/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { KbdSequence } from "@/components/ui/kbd";
 import {
@@ -44,17 +45,17 @@ export default function CommentInput({
   workspaceId,
 }: CommentInputProps) {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const { user: currentUser } = useAuth();
+
   const [content, setContent] = useState("");
   const [attachAction, setAttachAction] = useState<(() => void) | null>(null);
-  const { mutateAsync: createComment, isPending } = useCreateComment();
-  const queryClient = useQueryClient();
 
+  const { mutateAsync: createComment, isPending } = useCreateComment();
   const { data: workspaceUsers } = useGetWorkspaceUsers({ workspaceId });
 
   const mentionableMembers = useMemo<WorkspaceMember[]>(() => {
-    if (!Array.isArray(workspaceUsers)) {
-      return [];
-    }
+    if (!Array.isArray(workspaceUsers)) return [];
 
     return workspaceUsers.filter(
       (member): member is WorkspaceMember =>
@@ -66,9 +67,7 @@ export default function CommentInput({
   }, [workspaceUsers]);
 
   const mentionedUserIds = useMemo<string[]>(() => {
-    if (!content.trim() || mentionableMembers.length === 0) {
-      return [];
-    }
+    if (!content.trim() || mentionableMembers.length === 0) return [];
 
     const normalizedContent = content.toLowerCase();
 
@@ -96,19 +95,47 @@ export default function CommentInput({
   }, [content, mentionableMembers]);
 
   const handleSubmit = useCallback(async () => {
-    if (!content.trim()) {
+    const trimmedContent = content.trim();
+
+    if (!trimmedContent) {
       toast.error(t("activity:comment.cannotBeEmpty"));
       return;
     }
 
     try {
-      await createComment({
+      const newComment = await createComment({
         taskId,
         comment: content,
         mentions: mentionedUserIds,
       });
 
+      const optimisticComment = {
+        id: newComment?.id ?? `temp-${Date.now()}`,
+        type: "comment",
+        content,
+        createdAt: newComment?.createdAt ?? new Date().toISOString(),
+        userId: newComment?.userId ?? currentUser?.id ?? null,
+        taskId,
+      };
+
+      queryClient.setQueryData(["activities", taskId], (oldData: unknown) => {
+        if (!Array.isArray(oldData)) return oldData;
+
+        const exists = oldData.some(
+          (activity) =>
+            typeof activity === "object" &&
+            activity !== null &&
+            "id" in activity &&
+            activity.id === optimisticComment.id,
+        );
+
+        if (exists) return oldData;
+
+        return [optimisticComment, ...oldData];
+      });
+
       setContent("");
+
       await queryClient.invalidateQueries({ queryKey: ["activities", taskId] });
 
       toast.success(t("activity:comment.added"));
@@ -116,7 +143,15 @@ export default function CommentInput({
       console.error("Failed to create comment:", error);
       toast.error(t("activity:comment.failedToAdd"));
     }
-  }, [content, createComment, mentionedUserIds, queryClient, t, taskId]);
+  }, [
+    content,
+    createComment,
+    currentUser?.id,
+    mentionedUserIds,
+    queryClient,
+    t,
+    taskId,
+  ]);
 
   const handleAttachActionChange = useCallback(
     (nextAttachAction: (() => void) | null) => {

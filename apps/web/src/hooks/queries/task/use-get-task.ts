@@ -1,10 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import getTask from "@/fetchers/task/get-task";
 
-function useGetTask(taskId: string) {
+function useGetTask(taskId?: string) {
   return useQuery({
     queryKey: ["task", taskId],
-    queryFn: () => getTask(taskId),
+    queryFn: () => getTask(taskId as string),
+    enabled: Boolean(taskId),
     refetchOnMount: "always",
     staleTime: 0,
   });
