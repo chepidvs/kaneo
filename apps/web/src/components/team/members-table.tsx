@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { Pencil, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -58,6 +59,7 @@ function MembersTable({
   invitations: WorkspaceUserInvitation[];
   users: WorkspaceUser[];
 }) {
+  const queryClient = useQueryClient();
   const [memberToDelete, setMemberToDelete] = useState<WorkspaceUser | null>(
     null,
   );
@@ -140,6 +142,7 @@ function MembersTable({
     role: WorkspaceRole,
   ) => {
     if (!isOwner) return;
+
     if (currentUser?.id === member.userId) {
       toast.error("You cannot change your own workspace role");
       return;
@@ -150,6 +153,11 @@ function MembersTable({
         workspaceId,
         memberId: member.id,
         role,
+      });
+
+      // 🔥 ini kunci fix-nya
+      await queryClient.invalidateQueries({
+        queryKey: ["workspace-users", workspaceId],
       });
 
       toast.success("Workspace member role updated");

@@ -12,6 +12,7 @@ import useGetWorkspaceUsers from "@/hooks/queries/workspace-users/use-get-worksp
 
 type FlatWorkspaceUser = {
   id: string;
+  memberId: string;
   name: string | null;
   email: string;
   image: string | null;
@@ -36,7 +37,7 @@ function RouteComponent() {
 
   const users =
     workspaceUsers?.map((member: FlatWorkspaceUser) => ({
-      id: member.id,
+      id: member.memberId,
       userId: member.id,
       role: member.role,
       createdAt: null,
