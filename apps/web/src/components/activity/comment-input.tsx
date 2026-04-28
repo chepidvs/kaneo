@@ -76,15 +76,18 @@ export default function CommentInput({
       new Set(
         mentionableMembers
           .filter((member) => {
-            const username = normalizeMentionName(member.username ?? "");
-            if (!username) return false;
+            const mentionNames = [member.username, member.name]
+              .filter((value): value is string => Boolean(value?.trim()))
+              .map(normalizeMentionName);
 
-            const mentionPattern = new RegExp(
-              `(^|\\s)@${escapeRegExp(username)}(?=\\s|$|[.,!?;:])`,
-              "i",
-            );
+            return mentionNames.some((mentionName) => {
+              const mentionPattern = new RegExp(
+                `(^|\\s)@${escapeRegExp(mentionName)}(?=\\s|$|[.,!?;:])`,
+                "i",
+              );
 
-            return mentionPattern.test(normalizedContent);
+              return mentionPattern.test(normalizedContent);
+            });
           })
           .map((member) => member.id)
           .filter((id): id is string => Boolean(id)),

@@ -48,18 +48,18 @@ function createWorkspaceRuleState(input: {
 }): WorkspaceRuleState {
   if (input.rule) {
     return {
-      isActive: input.rule.isActive,
-      emailEnabled: input.rule.emailEnabled,
-      ntfyEnabled: input.rule.ntfyEnabled,
-      gotifyEnabled: input.rule.gotifyEnabled,
-      webhookEnabled: input.rule.webhookEnabled,
-      projectMode: input.rule.projectMode,
-      selectedProjectIds: input.rule.selectedProjectIds,
+      isActive: input.rule.isActive ?? true,
+      emailEnabled: input.rule.emailEnabled ?? input.hasEmailChannel,
+      ntfyEnabled: input.rule.ntfyEnabled ?? false,
+      gotifyEnabled: input.rule.gotifyEnabled ?? false,
+      webhookEnabled: input.rule.webhookEnabled ?? false,
+      projectMode: input.rule.projectMode ?? "all",
+      selectedProjectIds: input.rule.selectedProjectIds ?? [],
     };
   }
 
   return {
-    isActive: false,
+    isActive: true,
     emailEnabled: input.hasEmailChannel,
     ntfyEnabled: input.hasNtfyChannel,
     gotifyEnabled: input.hasGotifyChannel,
@@ -71,7 +71,7 @@ function createWorkspaceRuleState(input: {
 
 function createDefaultGlobalChannelPrefs(): GlobalChannelPrefsState {
   return {
-    emailEnabled: false,
+    emailEnabled: true,
     ntfy: { enabled: false, serverUrl: "", topic: "", token: "" },
     gotify: { enabled: false, serverUrl: "", token: "" },
     webhook: { enabled: false, url: "", secret: "" },
@@ -204,7 +204,7 @@ function WorkspaceRuleCard({
     rule,
   ]);
 
-  const isConnected = Boolean(rule);
+  const isConnected = state.isActive;
   const isBusy = isSaving || isDeleting;
 
   const toggleProject = (projectId: string, checked: boolean) => {
@@ -466,7 +466,7 @@ export function NotificationPreferencesSettings() {
   React.useEffect(() => {
     if (!preferences) return;
     setGlobalPrefs({
-      emailEnabled: preferences.emailEnabled,
+      emailEnabled: preferences.emailEnabled ?? true,
       ntfy: {
         enabled: preferences.ntfyEnabled,
         serverUrl: preferences.ntfyServerUrl ?? "",
