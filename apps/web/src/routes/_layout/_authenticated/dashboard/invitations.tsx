@@ -4,6 +4,7 @@ import { CheckCircle, Loader2, Mail, X } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import Layout from "@/components/common/layout";
+import NotificationDropdown from "@/components/notification/notification-dropdown";
 import PageTitle from "@/components/page-title";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -142,7 +143,7 @@ function InvitationsPage() {
       <PageTitle title={t("invitations:pageTitle")} />
       <Layout>
         <Layout.Header>
-          <div className="flex items-center gap-1 w-full">
+          <div className="flex items-center justify-between w-full">
             <SidebarTrigger className="-ml-1 h-6 w-6" />
             <Separator
               orientation="vertical"
