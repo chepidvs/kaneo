@@ -601,8 +601,18 @@ const task = new Hono<{
         return c.json(task);
       }
 
+      const project = await db.query.projectTable.findFirst({
+        where: eq(projectTable.id, task.projectId),
+      });
+
+      if (!project) {
+        throw new HTTPException(404, { message: "Project not found" });
+      }
+
       await publishEvent("task.assignee_changed", {
         taskId: task.id,
+        workspaceId: project.workspaceId,
+        projectId: task.projectId,
         userId: user,
         oldAssignee: existingTask.userId,
         newAssignee: newAssigneeName,
@@ -909,6 +919,12 @@ const task = new Hono<{
             .returning({
               id: assetTable.id,
             });
+
+      if (!asset) {
+        throw new HTTPException(500, {
+          message: "Failed to finalize image upload.",
+        });
+      }
 
       return c.json({
         id: asset.id,

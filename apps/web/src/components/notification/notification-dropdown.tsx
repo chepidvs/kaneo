@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
+
 import {
   AlertDialog,
   AlertDialogClose,
@@ -67,7 +68,9 @@ function isTaskNotification(notification: Notification) {
   return (
     notification.type === "task_comment_created" ||
     notification.type === "task_mentioned" ||
-    notification.type === "task_created"
+    notification.type === "task_created" ||
+    notification.type === "task_assignee_changed" ||
+    notification.type === "task_status_changed"
   );
 }
 
@@ -130,7 +133,17 @@ function getNotificationTitle(notification: Notification) {
     return "New task created";
   }
 
-  return notification.title ?? notification.type;
+  if (notification.type === "task_assignee_changed") {
+    return "Task assigned to you";
+  }
+
+  if (notification.type === "task_status_changed") {
+    return "Task status changed";
+  }
+
+  return notification.title && !notification.title.includes("_")
+    ? notification.title
+    : notification.type;
 }
 
 function getNotificationContent(notification: Notification) {
@@ -145,6 +158,21 @@ function getNotificationContent(notification: Notification) {
   }
 
   if (notification.type === "task_created" && eventData?.taskTitle) {
+    return String(eventData.taskTitle);
+  }
+
+  if (notification.type === "task_assignee_changed" && eventData?.taskTitle) {
+    return `You were assigned to ${String(eventData.taskTitle)}.`;
+  }
+
+  if (notification.type === "task_status_changed" && eventData?.taskTitle) {
+    const oldStatus = eventData?.oldStatus;
+    const newStatus = eventData?.newStatus;
+
+    if (oldStatus && newStatus) {
+      return `${String(eventData.taskTitle)} moved from ${String(oldStatus)} to ${String(newStatus)}.`;
+    }
+
     return String(eventData.taskTitle);
   }
 
@@ -391,10 +419,12 @@ const NotificationDropdown = forwardRef<NotificationDropdownRef>(
                 This action cannot be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
+
             <AlertDialogFooter>
               <AlertDialogClose>
                 <Button variant="outline">Cancel</Button>
               </AlertDialogClose>
+
               <AlertDialogClose onClick={handleClearAll}>
                 <Button variant="destructive">Clear all</Button>
               </AlertDialogClose>

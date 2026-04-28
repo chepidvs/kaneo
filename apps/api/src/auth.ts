@@ -20,7 +20,7 @@ import {
   organization,
 } from "better-auth/plugins";
 import { config } from "dotenv-mono";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import db, { schema } from "./database";
 import { publishEvent } from "./events";
 import { checkRegistrationAllowed } from "./utils/check-registration-allowed";
@@ -28,6 +28,23 @@ import { generateDemoName } from "./utils/generate-demo-name";
 import { getGithubSsoOAuthCredentials } from "./utils/github-sso-env";
 
 config();
+
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  try {
+    const payload = token.split(".")[1];
+    if (!payload) return null;
+
+    const normalizedPayload = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const decodedPayload = Buffer.from(normalizedPayload, "base64").toString(
+      "utf-8",
+    );
+
+    const parsed = JSON.parse(decodedPayload);
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch {
+    return null;
+  }
+}
 
 const githubSso = getGithubSsoOAuthCredentials();
 
@@ -406,9 +423,56 @@ export const auth = betterAuth({
       }
     }),
     after: createAuthMiddleware(async (ctx) => {
-      if (ctx.path.startsWith("/sign-up") || ctx.path.startsWith("/sign-in")) {
+      if (
+        ctx.path.startsWith("/sign-up") ||
+        ctx.path.startsWith("/sign-in") ||
+        ctx.path.startsWith("/callback/")
+      ) {
         const newSession = ctx.context.newSession;
+
         if (newSession) {
+          try {
+            const [currentUser] = await db
+              .select({
+                image: schema.userTable.image,
+              })
+              .from(schema.userTable)
+              .where(eq(schema.userTable.id, newSession.user.id))
+              .limit(1);
+
+            if (!currentUser?.image) {
+              const [googleAccount] = await db
+                .select({
+                  idToken: schema.accountTable.idToken,
+                })
+                .from(schema.accountTable)
+                .where(
+                  and(
+                    eq(schema.accountTable.userId, newSession.user.id),
+                    eq(schema.accountTable.providerId, "google"),
+                  ),
+                )
+                .limit(1);
+
+              if (googleAccount?.idToken) {
+                const decoded = decodeJwtPayload(googleAccount.idToken);
+                const picture =
+                  decoded && typeof decoded.picture === "string"
+                    ? String(decoded.picture)
+                    : null;
+
+                if (picture) {
+                  await db
+                    .update(schema.userTable)
+                    .set({ image: picture })
+                    .where(eq(schema.userTable.id, newSession.user.id));
+                }
+              }
+            }
+          } catch (error) {
+            console.error("Failed to sync Google avatar", error);
+          }
+
           const workspaceMember = await db
             .select({ workspaceId: schema.workspaceUserTable.workspaceId })
             .from(schema.workspaceUserTable)

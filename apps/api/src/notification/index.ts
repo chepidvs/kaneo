@@ -328,6 +328,8 @@ subscribeToEvent<{
 
 subscribeToEvent<{
   taskId: string;
+  workspaceId: string;
+  projectId: string;
   userId: string;
   oldAssignee: string | null;
   newAssignee: string;
@@ -340,6 +342,9 @@ subscribeToEvent<{
       type: "task_assignee_changed",
       eventData: {
         taskTitle: data.title,
+        taskId: data.taskId,
+        workspaceId: data.workspaceId,
+        projectId: data.projectId,
       },
       resourceId: data.taskId,
       resourceType: "task",
