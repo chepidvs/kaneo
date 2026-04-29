@@ -1,3 +1,18 @@
+## v2.7.2 | FRMWRK
+
+### 🚀 Improvements
+- Implement Optimistic UI for Labels (create, attach, detach)
+- Implement Optimistic UI for Comments (instant render with rollback support)
+- Implement Optimistic UI for Workspace Role Management
+- Improve Activity Feed synchronization using polling (5s interval)
+- Reduce UI flicker by minimizing unnecessary query invalidation
+
+### 🛠 Fixes
+- Fix delay on label updates
+- Fix delay on comment submission
+- Fix delay on role change updates
+- Improve cross-user activity visibility without manual refresh
+
 ## [2.7.1](https://github.com/chepidvs/kaneo/compare/v2.7.0...v2.7.1) (2026-04-28)
 
 ### ✨ Features
