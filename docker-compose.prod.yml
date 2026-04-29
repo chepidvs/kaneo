@@ -1,0 +1,29 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: kaneo-api
+    ports:
+      - "1337:1337"
+    env_file:
+      - .env
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: kaneo-web
+    ports:
+      - "5173:5173"
+    env_file:
+      - .env
+    depends_on:
+      - api
+    restart: unless-stopped
+
+networks:
+  default:
+    external: true
+    name: kaneo_default
