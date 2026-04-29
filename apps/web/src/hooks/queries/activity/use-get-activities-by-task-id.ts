@@ -6,8 +6,12 @@ function useGetActivitiesByTaskId(taskId: string) {
     queryKey: ["activities", taskId],
     queryFn: () => getActivitesByTaskId({ taskId }),
     enabled: Boolean(taskId),
-    refetchInterval: 5000,
+    refetchInterval: 3000,
     refetchIntervalInBackground: true,
+
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
+    staleTime: 0,
   });
 }
 

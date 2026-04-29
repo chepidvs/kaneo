@@ -102,6 +102,24 @@ export default function CommentInput({
       return;
     }
 
+    const tempId = `temp-${Date.now()}`;
+
+    const optimisticComment = {
+      id: tempId,
+      type: "comment",
+      content,
+      createdAt: new Date().toISOString(),
+      userId: currentUser?.id ?? null,
+      taskId,
+    };
+
+    queryClient.setQueryData(["activities", taskId], (oldData: unknown) => {
+      if (!Array.isArray(oldData)) return oldData;
+      return [optimisticComment, ...oldData];
+    });
+
+    setContent("");
+
     try {
       const newComment = await createComment({
         taskId,
@@ -109,37 +127,45 @@ export default function CommentInput({
         mentions: mentionedUserIds,
       });
 
-      const optimisticComment = {
-        id: newComment?.id ?? `temp-${Date.now()}`,
-        type: "comment",
-        content,
-        createdAt: newComment?.createdAt ?? new Date().toISOString(),
-        userId: newComment?.userId ?? currentUser?.id ?? null,
-        taskId,
-      };
-
       queryClient.setQueryData(["activities", taskId], (oldData: unknown) => {
         if (!Array.isArray(oldData)) return oldData;
 
-        const exists = oldData.some(
-          (activity) =>
+        return oldData.map((activity) => {
+          if (
             typeof activity === "object" &&
             activity !== null &&
             "id" in activity &&
-            activity.id === optimisticComment.id,
-        );
+            activity.id === tempId
+          ) {
+            return {
+              ...activity,
+              id: newComment.id,
+              createdAt: newComment.createdAt,
+            };
+          }
 
-        if (exists) return oldData;
-
-        return [optimisticComment, ...oldData];
+          return activity;
+        });
       });
-
-      setContent("");
 
       await queryClient.invalidateQueries({ queryKey: ["activities", taskId] });
 
       toast.success(t("activity:comment.added"));
     } catch (error) {
+      queryClient.setQueryData(["activities", taskId], (oldData: unknown) => {
+        if (!Array.isArray(oldData)) return oldData;
+
+        return oldData.filter(
+          (activity) =>
+            !(
+              typeof activity === "object" &&
+              activity !== null &&
+              "id" in activity &&
+              activity.id === tempId
+            ),
+        );
+      });
+
       console.error("Failed to create comment:", error);
       toast.error(t("activity:comment.failedToAdd"));
     }
@@ -186,6 +212,7 @@ export default function CommentInput({
           >
             <Paperclip className="size-3.5" />
           </Button>
+
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -204,6 +231,7 @@ export default function CommentInput({
                   <ArrowUp className="size-3.5" />
                 </Button>
               </TooltipTrigger>
+
               <TooltipContent>
                 <KbdSequence
                   keys={[getModifierKeyText(), "Enter"]}
