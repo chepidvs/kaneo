@@ -148,6 +148,29 @@ function MembersTable({
       return;
     }
 
+    const previousUsers = queryClient.getQueryData<WorkspaceUser[]>([
+      "workspace-users",
+      workspaceId,
+    ]);
+
+    queryClient.setQueryData(
+      ["workspace-users", workspaceId],
+      (oldData: WorkspaceUser[] | undefined) => {
+        if (!oldData) return oldData;
+
+        return oldData.map((workspaceUser) => {
+          if (workspaceUser.id === member.id) {
+            return {
+              ...workspaceUser,
+              role,
+            };
+          }
+
+          return workspaceUser;
+        });
+      },
+    );
+
     try {
       await updateWorkspaceUserRole({
         workspaceId,
@@ -155,13 +178,14 @@ function MembersTable({
         role,
       });
 
-      // 🔥 ini kunci fix-nya
       await queryClient.invalidateQueries({
         queryKey: ["workspace-users", workspaceId],
       });
 
       toast.success("Workspace member role updated");
     } catch (error) {
+      queryClient.setQueryData(["workspace-users", workspaceId], previousUsers);
+
       toast.error(
         error instanceof Error
           ? error.message
@@ -195,13 +219,13 @@ function MembersTable({
 
   if (users?.length === 0) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center space-y-6">
-          <div className="w-16 h-16 mx-auto rounded-xl bg-muted flex items-center justify-center">
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <div className="space-y-6 text-center">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-xl bg-muted">
             <span className="text-2xl">👥</span>
           </div>
           <div className="space-y-2">
-            <h3 className="text-xl font-semibold">
+            <h3 className="font-semibold text-xl">
               {t("team:membersTable.emptyTitle")}
             </h3>
             <p className="text-muted-foreground">
@@ -218,7 +242,7 @@ function MembersTable({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="text-muted-foreground text-xs w-2/3 pl-6">
+            <TableHead className="w-2/3 pl-6 text-muted-foreground text-xs">
               {t("team:membersTable.columns.name")}
             </TableHead>
             <TableHead className="text-muted-foreground text-xs">
@@ -227,7 +251,7 @@ function MembersTable({
             <TableHead className="text-muted-foreground text-xs">
               {t("team:membersTable.columns.joined")}
             </TableHead>
-            <TableHead className="text-muted-foreground text-xs pr-6 text-right">
+            <TableHead className="pr-6 text-right text-muted-foreground text-xs">
               {t("team:membersTable.columns.actions")}
             </TableHead>
           </TableRow>
@@ -254,7 +278,7 @@ function MembersTable({
                 </TableCell>
 
                 <TableCell className="py-3">
-                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-muted text-muted-foreground">
+                  <span className="inline-flex items-center rounded bg-muted px-1.5 py-0.5 text-muted-foreground text-xs">
                     {t("team:membersTable.memberRolePending", {
                       role: formatRole(invitation.role),
                     })}
@@ -262,7 +286,7 @@ function MembersTable({
                 </TableCell>
 
                 <TableCell className="py-3">
-                  <span className="text-sm text-muted-foreground">
+                  <span className="text-muted-foreground text-sm">
                     {invitation.expiresAt &&
                       formatDateMedium(invitation.expiresAt)}
                   </span>
@@ -273,11 +297,11 @@ function MembersTable({
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={(e) => {
-                        e.stopPropagation();
+                      onClick={(event) => {
+                        event.stopPropagation();
                         setInvitationToCancel(invitation);
                       }}
-                      className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                      className="h-8 w-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                       aria-label={t("team:membersTable.ariaCancelInvitation")}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -307,7 +331,7 @@ function MembersTable({
 
                     <div className="space-y-0.5">
                       <span>{member.user.name}</span>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-muted-foreground text-xs">
                         {member.user.email}
                       </p>
                     </div>
@@ -332,14 +356,14 @@ function MembersTable({
                       <option value="member">Member</option>
                     </select>
                   ) : (
-                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-muted text-muted-foreground">
+                    <span className="inline-flex items-center rounded bg-muted px-1.5 py-0.5 text-muted-foreground text-xs">
                       {formatRole(member.role)}
                     </span>
                   )}
                 </TableCell>
 
                 <TableCell className="py-3">
-                  <span className="text-sm text-muted-foreground">
+                  <span className="text-muted-foreground text-sm">
                     {member.createdAt && formatDateMedium(member.createdAt)}
                   </span>
                 </TableCell>
@@ -350,8 +374,8 @@ function MembersTable({
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={(e) => {
-                          e.stopPropagation();
+                        onClick={(event) => {
+                          event.stopPropagation();
                           setMemberToEdit(member);
                         }}
                         className="h-8 w-8 text-muted-foreground hover:text-foreground"
@@ -365,11 +389,11 @@ function MembersTable({
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={(e) => {
-                          e.stopPropagation();
+                        onClick={(event) => {
+                          event.stopPropagation();
                           setMemberToDelete(member);
                         }}
-                        className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                        className="h-8 w-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                         aria-label={t("team:membersTable.ariaRemoveMember")}
                       >
                         <Trash2 className="h-4 w-4" />
@@ -387,7 +411,7 @@ function MembersTable({
         open={!!memberToEdit}
         onOpenChange={(open) => !open && setMemberToEdit(null)}
       >
-        <AlertDialogContent className="max-w-xl w-full p-6">
+        <AlertDialogContent className="w-full max-w-xl p-6">
           <AlertDialogHeader>
             <AlertDialogTitle>Edit member profile</AlertDialogTitle>
             <AlertDialogDescription>
@@ -412,7 +436,7 @@ function MembersTable({
                 onChange={(event) => setEditUsername(event.target.value)}
                 placeholder="username"
               />
-              <p className="text-xs text-muted-foreground">
+              <p className="text-muted-foreground text-xs">
                 Lowercase letters, numbers, and underscore only.
               </p>
             </div>
@@ -471,7 +495,7 @@ function MembersTable({
 
             <AlertDialogClose onClick={handleDeleteMember} disabled={isPending}>
               <Button variant="destructive" size="sm" disabled={isPending}>
-                <Trash2 className="w-4 h-4 mr-2" />
+                <Trash2 className="mr-2 h-4 w-4" />
                 {t("team:membersTable.removeMember")}
               </Button>
             </AlertDialogClose>
@@ -507,7 +531,7 @@ function MembersTable({
               disabled={isCancelling}
             >
               <Button variant="destructive" size="sm" disabled={isCancelling}>
-                <Trash2 className="w-4 h-4 mr-2" />
+                <Trash2 className="mr-2 h-4 w-4" />
                 {t("team:membersTable.cancelInvitation")}
               </Button>
             </AlertDialogClose>
