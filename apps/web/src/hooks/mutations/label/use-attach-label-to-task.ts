@@ -79,10 +79,6 @@ function useAttachLabelToTask() {
       void queryClient.invalidateQueries({
         queryKey: ["activities", variables.taskId],
       });
-
-      void queryClient.invalidateQueries({
-        queryKey: ["tasks"],
-      });
     },
   });
 }

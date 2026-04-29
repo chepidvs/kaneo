@@ -55,10 +55,6 @@ function useDetachLabelFromTask() {
       void queryClient.invalidateQueries({
         queryKey: ["activities", variables.taskId],
       });
-
-      void queryClient.invalidateQueries({
-        queryKey: ["tasks"],
-      });
     },
   });
 }
