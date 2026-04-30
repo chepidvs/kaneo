@@ -202,32 +202,47 @@ const MentionHighlight = Extension.create({
   },
 });
 
-function keepHeadingBlockBoundaries(markdown: string) {
+function keepMarkdownBlockBoundaries(markdown: string) {
   const lines = markdown.split("\n");
   const nextLines: string[] = [];
   let fencedCodeMarker: string | null = null;
 
   lines.forEach((line, index) => {
     const fenceMatch = line.match(/^(```+|~~~+)/);
-    const isHeading = !fencedCodeMarker && /^#{1,6}\s+\S/.test(line);
+    const fenceMarker = fenceMatch?.[1][0] ?? null;
+    const isOpeningFence = !fencedCodeMarker && Boolean(fenceMarker);
+    const isClosingFence =
+      Boolean(fencedCodeMarker) && fenceMarker === fencedCodeMarker;
+    const isHeading =
+      !fencedCodeMarker && !isOpeningFence && /^#{1,6}\s+\S/.test(line);
     const previousLine = nextLines.at(-1);
     const nextLine = lines[index + 1];
+    const needsLeadingBoundary = isHeading || isOpeningFence;
+    const needsTrailingBoundary = isHeading || isClosingFence;
 
-    if (isHeading && previousLine !== undefined && previousLine.trim() !== "") {
+    if (
+      needsLeadingBoundary &&
+      previousLine !== undefined &&
+      previousLine.trim() !== ""
+    ) {
       nextLines.push("");
     }
 
     nextLines.push(line);
 
-    if (fenceMatch) {
-      if (fencedCodeMarker === fenceMatch[1][0]) {
+    if (fenceMarker) {
+      if (isClosingFence) {
         fencedCodeMarker = null;
-      } else if (!fencedCodeMarker) {
-        fencedCodeMarker = fenceMatch[1][0];
+      } else if (isOpeningFence) {
+        fencedCodeMarker = fenceMarker;
       }
     }
 
-    if (isHeading && nextLine !== undefined && nextLine.trim() !== "") {
+    if (
+      needsTrailingBoundary &&
+      nextLine !== undefined &&
+      nextLine.trim() !== ""
+    ) {
       nextLines.push("");
     }
   });
@@ -236,7 +251,7 @@ function keepHeadingBlockBoundaries(markdown: string) {
 }
 
 function normalizeMarkdown(markdown: string) {
-  return keepHeadingBlockBoundaries(
+  return keepMarkdownBlockBoundaries(
     markdown
       .replace(/\r\n/g, "\n")
       .replace(/&nbsp;/g, " ")
@@ -856,7 +871,7 @@ export default function CommentEditor({
           view.dispatch(tr.scrollIntoView());
           return true;
         },
-        handleKeyDown: (_view, event) => {
+        handleKeyDown: (view, event) => {
           if (!readOnly && !disabled && slashMenu) {
             if (event.key === "ArrowDown") {
               event.preventDefault();
@@ -911,6 +926,34 @@ export default function CommentEditor({
             if (event.key === "Escape") {
               event.preventDefault();
               setSlashMenu(null);
+              return true;
+            }
+          }
+
+          if (
+            !readOnly &&
+            !disabled &&
+            (event.key === "Backspace" || event.key === "Delete")
+          ) {
+            const { state } = view;
+            const { $from } = state.selection;
+
+            if (
+              $from.parent.type.name === "codeBlock" &&
+              $from.parent.textContent.length === 0
+            ) {
+              event.preventDefault();
+
+              const paragraph =
+                state.schema.nodes.paragraph?.createAndFill() ?? null;
+              if (!paragraph) return false;
+
+              const from = $from.before();
+              const to = $from.after();
+              const tr = state.tr.replaceWith(from, to, paragraph);
+
+              tr.setSelection(TextSelection.near(tr.doc.resolve(from + 1)));
+              view.dispatch(tr.scrollIntoView());
               return true;
             }
           }
