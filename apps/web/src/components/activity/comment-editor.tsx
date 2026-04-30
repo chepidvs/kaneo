@@ -20,6 +20,7 @@ import {
   Check,
   ChevronDown,
   Code,
+  Columns2,
   Copy,
   Heading2,
   Italic,
@@ -29,8 +30,13 @@ import {
   ListTodo,
   Paperclip,
   Quote,
+  Rows2,
   Strikethrough,
   Table2,
+  TableColumnsSplit,
+  TableProperties,
+  TableRowsSplit,
+  Trash2,
   UnderlineIcon,
 } from "lucide-react";
 import type { MouseEvent as ReactMouseEvent } from "react";
@@ -51,6 +57,7 @@ import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
@@ -202,6 +209,66 @@ const MentionHighlight = Extension.create({
   },
 });
 
+function unwrapMalformedSingleColumnTables(markdown: string) {
+  const lines = markdown.split("\n");
+  const nextLines: string[] = [];
+  let tableLines: string[] = [];
+
+  const flushTable = () => {
+    if (tableLines.length === 0) return;
+
+    const hasBlockSeparator = tableLines.some((line) =>
+      line.includes("\u001f"),
+    );
+    if (!hasBlockSeparator) {
+      nextLines.push(...tableLines);
+      tableLines = [];
+      return;
+    }
+
+    const blocks = tableLines
+      .filter((line) => !/^\|\s*:?-{3,}:?\s*\|$/.test(line.trim()))
+      .map((line) => line.trim().replace(/^\|/, "").replace(/\|$/, "").trim())
+      .filter(Boolean)
+      .flatMap((cell) => cell.split("\u001f"))
+      .map((block) =>
+        block
+          .trim()
+          .replace(/([.!?])-\s+(\*\*)/g, "$1\n- $2")
+          .replace(/^(\+\+\*\*.+\*\*\+\+|\*\*\+\+.+\+\+\*\*)$/, "## $1")
+          .replace(/^(\+\+[^+\n]+\+\+)$/, "## $1"),
+      )
+      .filter(Boolean);
+
+    if (nextLines.at(-1)?.trim()) {
+      nextLines.push("");
+    }
+
+    blocks.forEach((block, index) => {
+      if (index > 0) {
+        nextLines.push("");
+      }
+      nextLines.push(block);
+    });
+
+    tableLines = [];
+  };
+
+  for (const line of lines) {
+    if (/^\|.*\|$/.test(line.trim())) {
+      tableLines.push(line);
+      continue;
+    }
+
+    flushTable();
+    nextLines.push(line);
+  }
+
+  flushTable();
+
+  return nextLines.join("\n");
+}
+
 function keepMarkdownBlockBoundaries(markdown: string) {
   const lines = markdown.split("\n");
   const nextLines: string[] = [];
@@ -250,12 +317,14 @@ function keepMarkdownBlockBoundaries(markdown: string) {
   return nextLines.join("\n");
 }
 
-function normalizeMarkdown(markdown: string) {
+export function normalizeMarkdown(markdown: string) {
   return keepMarkdownBlockBoundaries(
-    markdown
-      .replace(/\r\n/g, "\n")
-      .replace(/&nbsp;/g, " ")
-      .replace(/\u00A0/g, " "),
+    unwrapMalformedSingleColumnTables(
+      markdown
+        .replace(/\r\n/g, "\n")
+        .replace(/&nbsp;/g, " ")
+        .replace(/\u00A0/g, " "),
+    ),
   ).replace(/\n{2,}$/g, "\n");
 }
 
@@ -1211,6 +1280,9 @@ export default function CommentEditor({
     if (!hasHydratedRef.current) {
       isSyncingRef.current = true;
       latestValueRef.current = incoming;
+      if (!readOnly && !disabled && onChange && incoming !== (value || "")) {
+        onChange(incoming);
+      }
       editor.commands.setContent(incoming, {
         emitUpdate: false,
         contentType: "markdown",
@@ -1224,6 +1296,9 @@ export default function CommentEditor({
 
     if (incoming === latestValueRef.current) return;
     isSyncingRef.current = true;
+    if (!readOnly && !disabled && onChange && incoming !== (value || "")) {
+      onChange(incoming);
+    }
     editor.commands.setContent(incoming, {
       emitUpdate: false,
       contentType: "markdown",
@@ -1232,7 +1307,7 @@ export default function CommentEditor({
     queueMicrotask(() => {
       isSyncingRef.current = false;
     });
-  }, [editor, value]);
+  }, [disabled, editor, onChange, readOnly, value]);
 
   const setLink = useCallback(() => {
     if (readOnly || disabled || !editor) return;
@@ -1727,6 +1802,81 @@ export default function CommentEditor({
       {editor && !readOnly && !disabled && showBubbleMenu && (
         <BubbleMenu
           editor={editor}
+          pluginKey="comment-table-bubble-menu"
+          className="kaneo-comment-editor-bubble"
+          shouldShow={({ editor: activeEditor, from, to }) =>
+            activeEditor.isActive("table") && from === to
+          }
+        >
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="xs"
+                className="kaneo-comment-editor-bubble-btn"
+                aria-label={t("activity:comment.editor.tableActions", {
+                  defaultValue: "Table actions",
+                })}
+                title={t("activity:comment.editor.tableActions", {
+                  defaultValue: "Table actions",
+                })}
+              >
+                <TableProperties className="size-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" side="bottom" sideOffset={6}>
+              <DropdownMenuItem
+                onClick={() => editor.chain().focus().addColumnAfter().run()}
+              >
+                <Columns2 className="size-4" />
+                {t("activity:comment.editor.addColumn", {
+                  defaultValue: "Add column",
+                })}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => editor.chain().focus().deleteColumn().run()}
+              >
+                <TableColumnsSplit className="size-4" />
+                {t("activity:comment.editor.deleteColumn", {
+                  defaultValue: "Delete column",
+                })}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => editor.chain().focus().addRowAfter().run()}
+              >
+                <Rows2 className="size-4" />
+                {t("activity:comment.editor.addRow", {
+                  defaultValue: "Add row",
+                })}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => editor.chain().focus().deleteRow().run()}
+              >
+                <TableRowsSplit className="size-4" />
+                {t("activity:comment.editor.deleteRow", {
+                  defaultValue: "Delete row",
+                })}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                variant="destructive"
+                onClick={() => editor.chain().focus().deleteTable().run()}
+              >
+                <Trash2 className="size-4" />
+                {t("activity:comment.editor.deleteTable", {
+                  defaultValue: "Delete table",
+                })}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </BubbleMenu>
+      )}
+      {editor && !readOnly && !disabled && showBubbleMenu && (
+        <BubbleMenu
+          editor={editor}
+          pluginKey="comment-text-bubble-menu"
           className="kaneo-comment-editor-bubble"
           shouldShow={({ editor: activeEditor, from, to }) => {
             if (activeEditor.isActive("embedBlock")) return false;
