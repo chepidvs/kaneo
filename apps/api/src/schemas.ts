@@ -21,6 +21,28 @@ export const projectSchema = v.object({
   archivedAt: v.nullable(v.date()),
 });
 
+export const moduleSchema = v.object({
+  id: v.string(),
+  projectId: v.string(),
+  name: v.string(),
+  description: v.nullable(v.string()),
+  position: v.number(),
+  createdAt: v.date(),
+  updatedAt: v.date(),
+});
+
+export const pageSchema = v.object({
+  id: v.string(),
+  projectId: v.string(),
+  title: v.string(),
+  slug: v.string(),
+  content: v.string(),
+  isPublic: v.boolean(),
+  createdBy: v.nullable(v.string()),
+  createdAt: v.date(),
+  updatedAt: v.date(),
+});
+
 export const taskSchema = v.object({
   id: v.string(),
   projectId: v.string(),
@@ -30,6 +52,7 @@ export const taskSchema = v.object({
   title: v.string(),
   description: v.nullable(v.string()),
   status: v.string(),
+  moduleId: v.nullable(v.string()),
   priority: v.picklist([
     "no-priority",
     "low",

@@ -31,8 +31,10 @@ import invitation from "./invitation";
 import label from "./label";
 import mcpRoutes, { mcpWellKnownRoutes } from "./mcp";
 import { migrateColumns } from "./migrations/column-migration";
+import moduleRoutes from "./module";
 import notification from "./notification";
 import notificationPreferences from "./notification-preferences";
+import page from "./page";
 import { initializePlugins } from "./plugins";
 import { migrateGitHubIntegration } from "./plugins/github/migration";
 import project from "./project";
@@ -453,6 +455,8 @@ export function createApp() {
   const commentApi = api.route("/comment", comment);
   const timeEntryApi = api.route("/time-entry", timeEntry);
   const labelApi = api.route("/label", label);
+  const moduleApi = api.route("/module", moduleRoutes);
+  const pageApi = api.route("/page", page);
   const notificationApi = api.route("/notification", notification);
   const notificationPreferencesApi = api.route(
     "/notification-preferences",
@@ -512,8 +516,10 @@ export function createApp() {
     invitationApi,
     invitationPublicApi,
     labelApi,
+    moduleApi,
     notificationApi,
     notificationPreferencesApi,
+    pageApi,
     projectApi,
     publicProjectApi,
     searchApi,
@@ -588,8 +594,10 @@ const {
   invitationApi,
   invitationPublicApi,
   labelApi,
+  moduleApi,
   notificationApi,
   notificationPreferencesApi,
+  pageApi,
   projectApi,
   publicProjectApi,
   searchApi,
@@ -621,8 +629,10 @@ export type AppType =
   | typeof commentApi
   | typeof timeEntryApi
   | typeof labelApi
+  | typeof moduleApi
   | typeof notificationApi
   | typeof notificationPreferencesApi
+  | typeof pageApi
   | typeof searchApi
   | typeof githubIntegrationApi
   | typeof giteaIntegrationApi

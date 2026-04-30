@@ -183,8 +183,9 @@ const project = new Hono<{
     async (c) => {
       const { id } = c.req.valid("param");
       const workspaceId = c.get("workspaceId");
+      const userId = c.get("userId");
 
-      const deletedProject = await deleteProjectCtrl(id, workspaceId);
+      const deletedProject = await deleteProjectCtrl(id, workspaceId, userId);
 
       return c.json(deletedProject);
     },

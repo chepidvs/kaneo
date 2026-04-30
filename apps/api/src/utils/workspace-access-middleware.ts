@@ -14,6 +14,8 @@ type WorkspaceIdSource =
         | "project"
         | "task"
         | "label"
+        | "module"
+        | "page"
         | "timeEntry"
         | "activity"
         | "comment"
@@ -100,6 +102,8 @@ async function lookupWorkspaceId(
     | "project"
     | "task"
     | "label"
+    | "module"
+    | "page"
     | "timeEntry"
     | "activity"
     | "comment"
@@ -146,6 +150,36 @@ async function lookupWorkspaceId(
           .where(eq(schema.labelTable.id, id))
           .limit(1);
         return label?.workspaceId || null;
+      }
+
+      case "module": {
+        const [module] = await db
+          .select({
+            workspaceId: schema.projectTable.workspaceId,
+          })
+          .from(schema.moduleTable)
+          .innerJoin(
+            schema.projectTable,
+            eq(schema.moduleTable.projectId, schema.projectTable.id),
+          )
+          .where(eq(schema.moduleTable.id, id))
+          .limit(1);
+        return module?.workspaceId || null;
+      }
+
+      case "page": {
+        const [page] = await db
+          .select({
+            workspaceId: schema.projectTable.workspaceId,
+          })
+          .from(schema.pageTable)
+          .innerJoin(
+            schema.projectTable,
+            eq(schema.pageTable.projectId, schema.projectTable.id),
+          )
+          .where(eq(schema.pageTable.id, id))
+          .limit(1);
+        return page?.workspaceId || null;
       }
 
       case "timeEntry": {
@@ -287,6 +321,22 @@ export const workspaceAccess = {
     workspaceAccessMiddleware({
       sources: [
         { type: "lookup", resource: "label", idKey },
+        { type: "query", key: "workspaceId" },
+      ],
+    }),
+
+  fromModule: (idKey = "id") =>
+    workspaceAccessMiddleware({
+      sources: [
+        { type: "lookup", resource: "module", idKey },
+        { type: "query", key: "workspaceId" },
+      ],
+    }),
+
+  fromPage: (idKey = "id") =>
+    workspaceAccessMiddleware({
+      sources: [
+        { type: "lookup", resource: "page", idKey },
         { type: "query", key: "workspaceId" },
       ],
     }),

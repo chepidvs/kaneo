@@ -4,10 +4,13 @@ import db from "../../database";
 import {
   activityTable,
   integrationTable,
-  labelTable,
   projectTable,
   taskTable,
 } from "../../database/schema";
+import {
+  attachProjectLabelToTask,
+  getTaskLabels,
+} from "../../label/task-label-sync";
 import type { GitHubConfig } from "../../plugins/github/config";
 import {
   createExternalLink,
@@ -271,7 +274,11 @@ async function importSingleIssue(
     },
   });
 
-  await importLabelsForTask(issue.labels, createdTask.id, workspaceId);
+  await importLabelsForTask(
+    issue.labels,
+    createdTask.id,
+    createdTask.projectId,
+  );
 
   await importCommentsForTask(issue.number, createdTask.id, config, octokit);
 
@@ -281,7 +288,7 @@ async function importSingleIssue(
 async function importLabelsForTask(
   issueLabels: GitHubIssue["labels"],
   taskId: string,
-  workspaceId: string,
+  projectId: string,
 ): Promise<void> {
   const nonSystemLabels = issueLabels
     .map((label) => {
@@ -301,37 +308,20 @@ async function importLabelsForTask(
     ) as Array<{ name: string; color: string }>;
 
   for (const labelData of nonSystemLabels) {
-    const existingLabelOnTask = await db.query.labelTable.findFirst({
-      where: and(
-        eq(labelTable.taskId, taskId),
-        eq(labelTable.name, labelData.name),
-      ),
-    });
+    const existingLabelOnTask = (await getTaskLabels(taskId)).find(
+      (label) => label.name === labelData.name,
+    );
 
     if (existingLabelOnTask) {
       continue;
     }
 
-    const existingWorkspaceLabel = await db.query.labelTable.findFirst({
-      where: and(
-        eq(labelTable.workspaceId, workspaceId),
-        eq(labelTable.name, labelData.name),
-      ),
+    await attachProjectLabelToTask({
+      taskId,
+      projectId,
+      name: labelData.name,
+      color: labelData.color,
     });
-
-    const colorToUse = existingWorkspaceLabel?.color || labelData.color;
-
-    await db
-      .insert(labelTable)
-      .values({
-        name: labelData.name,
-        color: colorToUse,
-        taskId,
-        workspaceId,
-      })
-      .onConflictDoNothing({
-        target: [labelTable.taskId, labelTable.name],
-      });
   }
 }
 

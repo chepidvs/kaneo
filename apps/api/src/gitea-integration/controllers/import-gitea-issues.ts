@@ -1,14 +1,14 @@
-import { and, eq, inArray, max, notInArray } from "drizzle-orm";
+import { and, eq, max } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import {
   activityTable,
   integrationTable,
-  labelTable,
   projectTable,
   taskTable,
 } from "../../database/schema";
 import { publishEvent } from "../../events";
+import { syncTaskLabelsByName } from "../../label/task-label-sync";
 import type { GiteaConfig } from "../../plugins/gitea/config";
 import { extractTaskNumberGitea } from "../../plugins/gitea/utils/branch-matcher";
 import {
@@ -122,7 +122,6 @@ export async function importGiteaIssues(
         issue,
         integration.id,
         projectId,
-        project.workspaceId,
         config,
         client,
       );
@@ -193,7 +192,6 @@ async function importSingleIssue(
   issue: GiteaIssue,
   integrationId: string,
   projectId: string,
-  workspaceId: string,
   config: GiteaConfig,
   client: ReturnType<typeof createGiteaClient>,
 ): Promise<"imported" | "updated" | "skipped"> {
@@ -222,7 +220,7 @@ async function importSingleIssue(
       .set(updateData)
       .where(eq(taskTable.id, existingLink.taskId));
 
-    await importLabelsForTask(labels, existingLink.taskId, workspaceId);
+    await importLabelsForTask(labels, existingLink.taskId, projectId);
 
     await importCommentsForTask(
       issue.number,
@@ -285,7 +283,7 @@ async function importSingleIssue(
     },
   });
 
-  await importLabelsForTask(labels, createdTask.id, workspaceId);
+  await importLabelsForTask(labels, createdTask.id, createdTask.projectId);
 
   await importCommentsForTask(issue.number, createdTask.id, config, client);
 
@@ -306,7 +304,7 @@ async function importSingleIssue(
 async function importLabelsForTask(
   issueLabels: GiteaIssue["labels"],
   taskId: string,
-  workspaceId: string,
+  projectId: string,
 ): Promise<void> {
   const nonSystemLabels = (issueLabels ?? [])
     .map((label) => {
@@ -327,61 +325,11 @@ async function importLabelsForTask(
         !label.name.startsWith("status:"),
     ) as Array<{ name: string; color: string }>;
 
-  const expectedNames = nonSystemLabels.map((label) => label.name);
-
-  if (expectedNames.length > 0) {
-    await db
-      .delete(labelTable)
-      .where(
-        and(
-          eq(labelTable.taskId, taskId),
-          notInArray(labelTable.name, expectedNames),
-        ),
-      );
-  } else {
-    await db.delete(labelTable).where(eq(labelTable.taskId, taskId));
-  }
-
-  const existingLabelsOnTask = await db.query.labelTable.findMany({
-    where:
-      expectedNames.length > 0
-        ? and(
-            eq(labelTable.taskId, taskId),
-            inArray(labelTable.name, expectedNames),
-          )
-        : eq(labelTable.taskId, taskId),
+  await syncTaskLabelsByName({
+    taskId,
+    projectId,
+    labels: nonSystemLabels,
   });
-
-  for (const labelData of nonSystemLabels) {
-    const existingLabelOnTask = existingLabelsOnTask.find(
-      (label) => label.name === labelData.name,
-    );
-
-    if (existingLabelOnTask) {
-      continue;
-    }
-
-    const existingWorkspaceLabel = await db.query.labelTable.findFirst({
-      where: and(
-        eq(labelTable.workspaceId, workspaceId),
-        eq(labelTable.name, labelData.name),
-      ),
-    });
-
-    const colorToUse = existingWorkspaceLabel?.color || labelData.color;
-
-    await db
-      .insert(labelTable)
-      .values({
-        name: labelData.name,
-        color: colorToUse,
-        taskId,
-        workspaceId,
-      })
-      .onConflictDoNothing({
-        target: [labelTable.taskId, labelTable.name],
-      });
-  }
 }
 
 async function importCommentsForTask(

@@ -5,6 +5,7 @@ import {
   columnTable,
   labelTable,
   projectTable,
+  taskLabelTable,
   taskTable,
   workspaceUserTable,
 } from "../../database/schema";
@@ -164,24 +165,22 @@ async function bulkUpdateTasks({
       }
 
       for (const task of tasks) {
-        const existingAssignment = await db.query.labelTable.findFirst({
+        const existingAssignment = await db.query.taskLabelTable.findFirst({
           where: and(
-            eq(labelTable.name, label.name),
-            eq(labelTable.taskId, task.id),
+            eq(taskLabelTable.taskId, task.id),
+            eq(taskLabelTable.labelId, label.id),
           ),
         });
 
         if (!existingAssignment) {
           await db
-            .insert(labelTable)
+            .insert(taskLabelTable)
             .values({
-              name: label.name,
-              color: label.color,
-              workspaceId: workspaceId,
               taskId: task.id,
+              labelId: label.id,
             })
             .onConflictDoNothing({
-              target: [labelTable.taskId, labelTable.name],
+              target: [taskLabelTable.taskId, taskLabelTable.labelId],
             });
           updatedCount++;
         }
@@ -193,11 +192,21 @@ async function bulkUpdateTasks({
       if (!value) {
         throw new HTTPException(400, { message: "Label ID is required" });
       }
+      const label = await db.query.labelTable.findFirst({
+        where: eq(labelTable.id, value),
+      });
+
+      if (!label) {
+        throw new HTTPException(404, { message: "Label not found" });
+      }
+
       const result = await db
-        .update(labelTable)
-        .set({ taskId: null })
+        .delete(taskLabelTable)
         .where(
-          and(eq(labelTable.id, value), inArray(labelTable.taskId, foundIds)),
+          and(
+            eq(taskLabelTable.labelId, value),
+            inArray(taskLabelTable.taskId, foundIds),
+          ),
         );
 
       updatedCount = result.rowCount ?? foundIds.length;

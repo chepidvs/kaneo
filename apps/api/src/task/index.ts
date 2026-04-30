@@ -80,6 +80,7 @@ const task = new Hono<{
           sortOrder: v.optional(v.picklist(["asc", "desc"])),
           dueBefore: v.optional(v.string()),
           dueAfter: v.optional(v.string()),
+          moduleId: v.optional(v.string()),
         }),
       ),
     ),
@@ -184,6 +185,7 @@ const task = new Hono<{
         priority: v.picklist(VALID_PRIORITIES),
         status: v.string(),
         userId: v.optional(v.string()),
+        moduleId: v.optional(v.nullable(v.string())),
       }),
     ),
     workspaceAccess.fromProject("projectId"),
@@ -197,6 +199,7 @@ const task = new Hono<{
         priority,
         status,
         userId,
+        moduleId,
       } = c.req.valid("json");
 
       const task = await createTask({
@@ -208,6 +211,7 @@ const task = new Hono<{
         dueDate: dueDate ? new Date(dueDate) : undefined,
         priority,
         status,
+        moduleId,
       });
 
       return c.json(task);
@@ -313,6 +317,7 @@ const task = new Hono<{
         projectId: v.string(),
         position: v.number(),
         userId: v.optional(v.string()),
+        moduleId: v.optional(v.nullable(v.string())),
       }),
     ),
     workspaceAccess.fromTask(),
@@ -331,6 +336,7 @@ const task = new Hono<{
         projectId,
         position,
         userId,
+        moduleId,
       } = c.req.valid("json");
 
       if (!existingTask) {
@@ -348,6 +354,7 @@ const task = new Hono<{
         priority,
         position,
         userId,
+        moduleId,
       );
 
       if (existingTask.status !== status) {

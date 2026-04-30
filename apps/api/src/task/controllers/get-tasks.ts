@@ -28,6 +28,7 @@ type GetTasksOptions = {
   limit?: number;
   page?: number;
   priority?: string;
+  moduleId?: string;
   sortBy?:
     | "createdAt"
     | "priority"
@@ -94,6 +95,10 @@ async function getTasks(projectId: string, options: GetTasksOptions = {}) {
     conditions.push(eq(taskTable.userId, options.assigneeId));
   }
 
+  if (options.moduleId) {
+    conditions.push(eq(taskTable.moduleId, options.moduleId));
+  }
+
   if (options.dueBefore) {
     conditions.push(lte(taskTable.dueDate, new Date(options.dueBefore)));
   }
@@ -137,6 +142,7 @@ async function getTasks(projectId: string, options: GetTasksOptions = {}) {
     assigneeId: userTable.id,
     assigneeImage: userTable.image,
     projectId: taskTable.projectId,
+    moduleId: taskTable.moduleId,
   };
 
   const query = db

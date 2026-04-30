@@ -1,0 +1,20 @@
+import { client } from "@kaneo/libs";
+
+async function createModule(
+  projectId: string,
+  data: { name: string; description?: string },
+) {
+  const response = await client.module.project[":projectId"].$post({
+    param: { projectId },
+    json: data,
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(error);
+  }
+
+  return response.json();
+}
+
+export default createModule;

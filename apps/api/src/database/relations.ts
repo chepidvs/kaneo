@@ -11,7 +11,9 @@ import {
   integrationTable,
   invitationTable,
   labelTable,
+  moduleTable,
   notificationTable,
+  pageTable,
   projectMemberTable,
   projectTable,
   sessionTable,
@@ -106,6 +108,8 @@ export const projectTableRelations = relations(
     }),
     members: many(projectMemberTable),
     labels: many(labelTable),
+    modules: many(moduleTable),
+    pages: many(pageTable),
     tasks: many(taskTable),
     assets: many(assetTable),
     columns: many(columnTable),
@@ -115,6 +119,25 @@ export const projectTableRelations = relations(
     notificationWorkspaceProjects: many(userNotificationWorkspaceProjectTable),
   }),
 );
+
+export const moduleTableRelations = relations(moduleTable, ({ one, many }) => ({
+  project: one(projectTable, {
+    fields: [moduleTable.projectId],
+    references: [projectTable.id],
+  }),
+  tasks: many(taskTable),
+}));
+
+export const pageTableRelations = relations(pageTable, ({ one }) => ({
+  project: one(projectTable, {
+    fields: [pageTable.projectId],
+    references: [projectTable.id],
+  }),
+  creator: one(userTable, {
+    fields: [pageTable.createdBy],
+    references: [userTable.id],
+  }),
+}));
 
 export const projectMemberTableRelations = relations(
   projectMemberTable,
@@ -169,6 +192,10 @@ export const taskTableRelations = relations(taskTable, ({ one, many }) => ({
   column: one(columnTable, {
     fields: [taskTable.columnId],
     references: [columnTable.id],
+  }),
+  module: one(moduleTable, {
+    fields: [taskTable.moduleId],
+    references: [moduleTable.id],
   }),
   timeEntries: many(timeEntryTable),
   activities: many(activityTable),

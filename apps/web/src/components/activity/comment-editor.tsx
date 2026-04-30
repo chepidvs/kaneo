@@ -16,15 +16,21 @@ import { BubbleMenu } from "@tiptap/react/menus";
 import StarterKit from "@tiptap/starter-kit";
 import {
   Bold,
+  Braces,
   Check,
   ChevronDown,
+  Code,
   Copy,
+  Heading2,
   Italic,
   Link2,
   List,
   ListOrdered,
   ListTodo,
   Paperclip,
+  Quote,
+  Strikethrough,
+  Table2,
   UnderlineIcon,
 } from "lucide-react";
 import type { MouseEvent as ReactMouseEvent } from "react";
@@ -196,13 +202,46 @@ const MentionHighlight = Extension.create({
   },
 });
 
+function keepHeadingBlockBoundaries(markdown: string) {
+  const lines = markdown.split("\n");
+  const nextLines: string[] = [];
+  let fencedCodeMarker: string | null = null;
+
+  lines.forEach((line, index) => {
+    const fenceMatch = line.match(/^(```+|~~~+)/);
+    const isHeading = !fencedCodeMarker && /^#{1,6}\s+\S/.test(line);
+    const previousLine = nextLines.at(-1);
+    const nextLine = lines[index + 1];
+
+    if (isHeading && previousLine !== undefined && previousLine.trim() !== "") {
+      nextLines.push("");
+    }
+
+    nextLines.push(line);
+
+    if (fenceMatch) {
+      if (fencedCodeMarker === fenceMatch[1][0]) {
+        fencedCodeMarker = null;
+      } else if (!fencedCodeMarker) {
+        fencedCodeMarker = fenceMatch[1][0];
+      }
+    }
+
+    if (isHeading && nextLine !== undefined && nextLine.trim() !== "") {
+      nextLines.push("");
+    }
+  });
+
+  return nextLines.join("\n");
+}
+
 function normalizeMarkdown(markdown: string) {
-  return markdown
-    .replace(/\r\n/g, "\n")
-    .replace(/&nbsp;/g, " ")
-    .replace(/\u00A0/g, " ")
-    .replace(/\n{3,}/g, "\n\n")
-    .replace(/\n{2,}$/g, "\n");
+  return keepHeadingBlockBoundaries(
+    markdown
+      .replace(/\r\n/g, "\n")
+      .replace(/&nbsp;/g, " ")
+      .replace(/\u00A0/g, " "),
+  ).replace(/\n{2,}$/g, "\n");
 }
 
 type EmbedComposerState = {
@@ -1659,37 +1698,16 @@ export default function CommentEditor({
             size="xs"
             className={cn(
               "kaneo-comment-editor-bubble-btn",
-              editor.isActive("bold") && "bg-accent text-accent-foreground",
-            )}
-            onClick={() => editor.chain().focus().toggleBold().run()}
-          >
-            <Bold className="size-3.5" />
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="xs"
-            className={cn(
-              "kaneo-comment-editor-bubble-btn",
-              editor.isActive("italic") && "bg-accent text-accent-foreground",
-            )}
-            onClick={() => editor.chain().focus().toggleItalic().run()}
-          >
-            <Italic className="size-3.5" />
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="xs"
-            className={cn(
-              "kaneo-comment-editor-bubble-btn",
-              editor.isActive("underline") &&
+              editor.isActive("heading", { level: 2 }) &&
                 "bg-accent text-accent-foreground",
             )}
-            onClick={() => editor.chain().focus().toggleUnderline().run()}
+            onClick={() =>
+              editor.chain().focus().toggleHeading({ level: 2 }).run()
+            }
           >
-            <UnderlineIcon className="size-3.5" />
+            <Heading2 className="size-3.5" />
           </Button>
+          <span className="kaneo-comment-editor-bubble-separator" />
           <Button
             type="button"
             variant="ghost"
@@ -1727,6 +1745,105 @@ export default function CommentEditor({
             onClick={() => editor.chain().focus().toggleOrderedList().run()}
           >
             <ListOrdered className="size-3.5" />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="xs"
+            className={cn(
+              "kaneo-comment-editor-bubble-btn",
+              editor.isActive("blockquote") &&
+                "bg-accent text-accent-foreground",
+            )}
+            onClick={() => editor.chain().focus().toggleBlockquote().run()}
+          >
+            <Quote className="size-3.5" />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="xs"
+            className={cn(
+              "kaneo-comment-editor-bubble-btn",
+              editor.isActive("codeBlock") &&
+                "bg-accent text-accent-foreground",
+            )}
+            onClick={() => editor.chain().focus().toggleCodeBlock().run()}
+          >
+            <Braces className="size-3.5" />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="xs"
+            className="kaneo-comment-editor-bubble-btn"
+            onClick={() =>
+              editor.chain().focus().insertTable({ cols: 3, rows: 3 }).run()
+            }
+          >
+            <Table2 className="size-3.5" />
+          </Button>
+          <span className="kaneo-comment-editor-bubble-separator" />
+          <Button
+            type="button"
+            variant="ghost"
+            size="xs"
+            className={cn(
+              "kaneo-comment-editor-bubble-btn",
+              editor.isActive("bold") && "bg-accent text-accent-foreground",
+            )}
+            onClick={() => editor.chain().focus().toggleBold().run()}
+          >
+            <Bold className="size-3.5" />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="xs"
+            className={cn(
+              "kaneo-comment-editor-bubble-btn",
+              editor.isActive("italic") && "bg-accent text-accent-foreground",
+            )}
+            onClick={() => editor.chain().focus().toggleItalic().run()}
+          >
+            <Italic className="size-3.5" />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="xs"
+            className={cn(
+              "kaneo-comment-editor-bubble-btn",
+              editor.isActive("underline") &&
+                "bg-accent text-accent-foreground",
+            )}
+            onClick={() => editor.chain().focus().toggleUnderline().run()}
+          >
+            <UnderlineIcon className="size-3.5" />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="xs"
+            className={cn(
+              "kaneo-comment-editor-bubble-btn",
+              editor.isActive("strike") && "bg-accent text-accent-foreground",
+            )}
+            onClick={() => editor.chain().focus().toggleStrike().run()}
+          >
+            <Strikethrough className="size-3.5" />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="xs"
+            className={cn(
+              "kaneo-comment-editor-bubble-btn",
+              editor.isActive("code") && "bg-accent text-accent-foreground",
+            )}
+            onClick={() => editor.chain().focus().toggleCode().run()}
+          >
+            <Code className="size-3.5" />
           </Button>
           <Button
             type="button"

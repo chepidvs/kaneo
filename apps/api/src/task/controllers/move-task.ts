@@ -131,6 +131,12 @@ async function moveTask({
     destinationStatus,
   );
 
+  if (!resolvedColumn) {
+    throw new HTTPException(400, {
+      message: "Destination project does not have a workflow",
+    });
+  }
+
   const movedTask = await db.transaction(async (tx) => {
     const [nextTaskNumber, nextPosition] = await Promise.all([
       getNextTaskNumber(destinationProjectId, tx),

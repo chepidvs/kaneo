@@ -1,8 +1,9 @@
 import { client } from "@kaneo/libs";
 
-async function getTasks(projectId: string) {
+async function getTasks(projectId: string, moduleId?: string) {
   const response = await client.task.tasks[":projectId"].$get({
     param: { projectId },
+    query: moduleId ? { moduleId } : {},
   });
 
   if (!response.ok) {

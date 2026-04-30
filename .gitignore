@@ -41,4 +41,5 @@ yarn-error.log*
 *.db
 
 # Cache
-.cache/
+.cache/docs/
+AGENTS.md

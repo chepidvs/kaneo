@@ -20,6 +20,20 @@ vi.mock("@/hooks/mutations/comment/use-update-comment", () => ({
   }),
 }));
 
+vi.mock("@/hooks/mutations/comment/use-delete-comment", () => ({
+  default: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+}));
+
+vi.mock("@/hooks/use-workspace-permission", () => ({
+  useWorkspacePermission: () => ({
+    isAdmin: false,
+    isOwner: false,
+  }),
+}));
+
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key: string) => key,

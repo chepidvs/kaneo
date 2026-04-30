@@ -252,6 +252,66 @@ export const projectMemberTable = pgTable(
   ],
 );
 
+export const moduleTable = pgTable(
+  "module",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => projectTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    name: text("name").notNull(),
+    description: text("description"),
+    position: integer("position").notNull().default(0),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("module_projectId_idx").on(table.projectId),
+    uniqueIndex("module_project_name_unique").on(table.projectId, table.name),
+  ],
+);
+
+export const pageTable = pgTable(
+  "page",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => projectTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    title: text("title").notNull(),
+    slug: text("slug").notNull(),
+    content: text("content").notNull().default(""),
+    isPublic: boolean("is_public").default(false).notNull(),
+    createdBy: text("created_by").references(() => userTable.id, {
+      onDelete: "set null",
+      onUpdate: "cascade",
+    }),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("page_projectId_idx").on(table.projectId),
+    index("page_createdBy_idx").on(table.createdBy),
+    uniqueIndex("page_project_slug_unique").on(table.projectId, table.slug),
+  ],
+);
+
 export const columnTable = pgTable(
   "column",
   {
@@ -333,6 +393,10 @@ export const taskTable = pgTable(
       onDelete: "set null",
       onUpdate: "cascade",
     }),
+    moduleId: text("module_id").references(() => moduleTable.id, {
+      onDelete: "set null",
+      onUpdate: "cascade",
+    }),
     priority: text("priority").default("low"),
     startDate: timestamp("start_date", { mode: "date" }),
     dueDate: timestamp("due_date", { mode: "date" }),
@@ -344,6 +408,7 @@ export const taskTable = pgTable(
   },
   (table) => [
     index("task_projectId_idx").on(table.projectId),
+    index("task_moduleId_idx").on(table.moduleId),
     index("task_dueDate_idx").on(table.dueDate),
     unique("task_project_number_unique").on(table.projectId, table.number),
   ],

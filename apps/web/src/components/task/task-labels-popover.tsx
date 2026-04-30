@@ -296,7 +296,7 @@ export default function TaskLabelsPopover({
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild={!triggerNativeButton}>{children}</PopoverTrigger>
+      <PopoverTrigger nativeButton={triggerNativeButton} render={children} />
       <PopoverContent className="w-[240px] p-0" align="start">
         {step === "select" ? renderSelectStep() : renderColorStep()}
       </PopoverContent>

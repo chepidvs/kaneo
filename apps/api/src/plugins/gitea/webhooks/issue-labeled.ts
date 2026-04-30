@@ -1,7 +1,13 @@
-import { eq, inArray } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import db from "../../../database";
-import { labelTable, taskTable } from "../../../database/schema";
+import { taskTable } from "../../../database/schema";
 import { publishEvent } from "../../../events";
+import {
+  attachProjectLabelToTask,
+  getTaskLabels,
+  removeTaskLabelByName,
+  syncTaskLabelsByName,
+} from "../../../label/task-label-sync";
 import { findExternalLink } from "../../github/services/link-manager";
 import { updateTaskStatus } from "../../github/services/task-service";
 import {
@@ -54,62 +60,17 @@ function normalizedGiteaLabelColor(g: { color?: string }): string {
 
 async function syncGiteaLabelsToTask(
   taskId: string,
-  workspaceId: string,
+  projectId: string,
   giteaLabels: Array<{ name: string; color?: string }>,
 ) {
-  const desiredNames = new Set(giteaLabels.map((l) => l.name));
-  const existingRows = await db.query.labelTable.findMany({
-    where: eq(labelTable.taskId, taskId),
-  });
-
-  const labelsToInsert = giteaLabels
-    .filter((g) => !existingRows.some((row) => row.name === g.name))
-    .map((g) => ({
+  await syncTaskLabelsByName({
+    taskId,
+    projectId,
+    labels: giteaLabels.map((g) => ({
       name: g.name,
       color: normalizedGiteaLabelColor(g),
-      taskId,
-      workspaceId,
-    }));
-
-  const colorToIds = new Map<string, string[]>();
-  for (const g of giteaLabels) {
-    if (isSystemLabelName(g.name)) continue;
-    const row = existingRows.find((r) => r.name === g.name);
-    if (!row) continue;
-    const want = normalizedGiteaLabelColor(g);
-    const have = row.color ? `#${row.color.replace(/^#/, "")}` : "#6B7280";
-    if (have === want) continue;
-    const list = colorToIds.get(want) ?? [];
-    list.push(row.id);
-    colorToIds.set(want, list);
-  }
-
-  for (const [color, ids] of colorToIds) {
-    if (ids.length === 0) continue;
-    await db
-      .update(labelTable)
-      .set({ color })
-      .where(inArray(labelTable.id, ids));
-  }
-
-  if (labelsToInsert.length > 0) {
-    await db
-      .insert(labelTable)
-      .values(labelsToInsert)
-      .onConflictDoNothing({
-        target: [labelTable.taskId, labelTable.name],
-      });
-  }
-
-  const labelsToDelete = existingRows
-    .filter(
-      (row) => !desiredNames.has(row.name) && !isSystemLabelName(row.name),
-    )
-    .map((row) => row.id);
-
-  if (labelsToDelete.length > 0) {
-    await db.delete(labelTable).where(inArray(labelTable.id, labelsToDelete));
-  }
+    })),
+  });
 }
 
 export async function handleGiteaIssueLabeled(payload: IssueLabeledPayload) {
@@ -180,10 +141,10 @@ export async function handleGiteaIssueLabeled(payload: IssueLabeledPayload) {
             project: true,
           },
         });
-        if (task?.project?.workspaceId) {
+        if (task) {
           await syncGiteaLabelsToTask(
             existingLink.taskId,
-            task.project.workspaceId,
+            task.projectId,
             giteaLabelsForSync(issue.labels),
           );
         }
@@ -206,47 +167,27 @@ export async function handleGiteaIssueLabeled(payload: IssueLabeledPayload) {
           },
         });
 
-        if (task?.project?.workspaceId) {
-          const existingLabel = await db.query.labelTable.findFirst({
-            where: (table, { and, eq: e }) =>
-              and(
-                e(table.workspaceId, task.project.workspaceId),
-                e(table.name, addedLabel.name),
-                e(table.taskId, task.id),
-              ),
-          });
+        if (task) {
+          const existingLabel = (await getTaskLabels(task.id)).find(
+            (label) => label.name === addedLabel.name,
+          );
 
           if (!existingLabel) {
             const color = addedLabel.color
               ? `#${addedLabel.color.replace(/^#/, "")}`
               : "#6B7280";
-            await db
-              .insert(labelTable)
-              .values({
-                name: addedLabel.name,
-                color,
-                taskId: task.id,
-                workspaceId: task.project.workspaceId,
-              })
-              .onConflictDoNothing({
-                target: [labelTable.taskId, labelTable.name],
-              });
+            await attachProjectLabelToTask({
+              taskId: task.id,
+              projectId: task.projectId,
+              name: addedLabel.name,
+              color,
+            });
           }
         }
       }
 
       if (payload.action === "unlabeled") {
-        const labelsToDelete = await db.query.labelTable.findMany({
-          where: (table, { and, eq: e }) =>
-            and(
-              e(table.taskId, existingLink.taskId),
-              e(table.name, addedLabel.name),
-            ),
-        });
-
-        for (const label of labelsToDelete) {
-          await db.delete(labelTable).where(eq(labelTable.id, label.id));
-        }
+        await removeTaskLabelByName(existingLink.taskId, addedLabel.name);
       }
     } catch (error) {
       console.error("Gitea issue_labeled handler failed for integration", {

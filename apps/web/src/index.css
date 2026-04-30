@@ -1014,6 +1014,39 @@ input:-webkit-autofill:active {
     outline: none;
   }
 
+  .kaneo-page-editor-content .ProseMirror {
+    min-height: calc(100vh - 15rem);
+    max-height: none;
+    overflow: visible;
+    padding: 0.2rem 0 5rem;
+    font-size: 1rem;
+    line-height: 1.72;
+  }
+
+  .kaneo-page-editor-content .ProseMirror p + p,
+  .kaneo-page-document .kaneo-tiptap-content .ProseMirror p + p {
+    margin-top: 1rem;
+  }
+
+  .kaneo-page-editor-content .ProseMirror p + :is(h1, h2, h3),
+  .kaneo-page-document .kaneo-tiptap-content .ProseMirror p + :is(h1, h2, h3) {
+    margin-top: 1.65rem;
+  }
+
+  .kaneo-page-editor-content .ProseMirror :is(h1, h2, h3) + p,
+  .kaneo-page-document .kaneo-tiptap-content .ProseMirror :is(h1, h2, h3) + p {
+    margin-top: 1rem;
+  }
+
+  .kaneo-page-editor-content .ProseMirror :is(ul, ol, blockquote, pre, table) + p,
+  .kaneo-page-document
+    .kaneo-tiptap-content
+    .ProseMirror
+    :is(ul, ol, blockquote, pre, table)
+    + p {
+    margin-top: 1rem;
+  }
+
   .kaneo-comment-editor-shell-readonly .kaneo-comment-editor-content .ProseMirror {
     min-height: 0;
     max-height: none;
@@ -1253,6 +1286,13 @@ input:-webkit-autofill:active {
     height: 1.58rem;
     width: 1.58rem;
     padding: 0;
+  }
+
+  .kaneo-comment-editor-bubble-separator {
+    width: 1px;
+    height: 1rem;
+    margin: 0 0.12rem;
+    background: color-mix(in srgb, var(--border) 84%, transparent);
   }
 
   .kaneo-comment-editor-shell .kaneo-tiptap-slash-menu {

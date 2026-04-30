@@ -1,6 +1,10 @@
 import { eq } from "drizzle-orm";
 import db from "../../../database";
-import { labelTable, taskTable } from "../../../database/schema";
+import { taskTable } from "../../../database/schema";
+import {
+  attachProjectLabelToTask,
+  removeTaskLabelByName,
+} from "../../../label/task-label-sync";
 import { findExternalLink } from "../services/link-manager";
 import {
   findAllIntegrationsByRepo,
@@ -80,45 +84,19 @@ export async function handleIssueLabeled(payload: IssueLabeledPayload) {
         },
       });
 
-      if (task?.project?.workspaceId) {
-        const existingLabel = await db.query.labelTable.findFirst({
-          where: (table, { and, eq }) =>
-            and(
-              eq(table.workspaceId, task.project.workspaceId),
-              eq(table.name, addedLabel.name),
-              eq(table.taskId, task.id),
-            ),
+      if (task) {
+        const color = addedLabel.color ? `#${addedLabel.color}` : "#6B7280";
+        await attachProjectLabelToTask({
+          taskId: task.id,
+          projectId: task.projectId,
+          name: addedLabel.name,
+          color,
         });
-
-        if (!existingLabel) {
-          const color = addedLabel.color ? `#${addedLabel.color}` : "#6B7280";
-          await db
-            .insert(labelTable)
-            .values({
-              name: addedLabel.name,
-              color,
-              taskId: task.id,
-              workspaceId: task.project.workspaceId,
-            })
-            .onConflictDoNothing({
-              target: [labelTable.taskId, labelTable.name],
-            });
-        }
       }
     }
 
     if (payload.action === "unlabeled") {
-      const labelsToDelete = await db.query.labelTable.findMany({
-        where: (table, { and, eq }) =>
-          and(
-            eq(table.taskId, existingLink.taskId),
-            eq(table.name, addedLabel.name),
-          ),
-      });
-
-      for (const label of labelsToDelete) {
-        await db.delete(labelTable).where(eq(labelTable.id, label.id));
-      }
+      await removeTaskLabelByName(existingLink.taskId, addedLabel.name);
     }
 
     return;

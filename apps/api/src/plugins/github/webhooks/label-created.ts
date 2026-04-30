@@ -1,4 +1,4 @@
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import db from "../../../database";
 import { labelTable, projectTable } from "../../../database/schema";
 import { findAllIntegrationsByRepo } from "../services/task-service";
@@ -33,16 +33,13 @@ export async function handleLabelCreated(payload: LabelCreatedPayload) {
       where: eq(projectTable.id, integration.project.id),
     });
 
-    if (!project?.workspaceId) {
+    if (!project) {
       continue;
     }
 
     const labelExists = await db.query.labelTable.findFirst({
       where: (table, { and, eq }) =>
-        and(
-          eq(table.workspaceId, project.workspaceId),
-          eq(table.name, label.name),
-        ),
+        and(eq(table.projectId, project.id), eq(table.name, label.name)),
     });
 
     if (labelExists) {
@@ -56,11 +53,10 @@ export async function handleLabelCreated(payload: LabelCreatedPayload) {
       .values({
         name: label.name,
         color,
-        workspaceId: project.workspaceId,
+        projectId: project.id,
       })
       .onConflictDoNothing({
-        target: [labelTable.workspaceId, labelTable.name],
-        where: sql`${labelTable.taskId} is null`,
+        target: [labelTable.projectId, labelTable.name],
       });
   }
 }

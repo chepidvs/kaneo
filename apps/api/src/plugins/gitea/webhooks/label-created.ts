@@ -1,4 +1,3 @@
-import { sql } from "drizzle-orm";
 import db from "../../../database";
 import { labelTable } from "../../../database/schema";
 import {
@@ -45,11 +44,6 @@ export async function handleGiteaLabelCreated(payload: LabelCreatePayload) {
       continue;
     }
 
-    const workspaceId = integration.project.workspaceId;
-    if (!workspaceId) {
-      continue;
-    }
-
     const color = label.color ? `#${label.color.replace(/^#/, "")}` : "#6B7280";
 
     await db
@@ -57,11 +51,10 @@ export async function handleGiteaLabelCreated(payload: LabelCreatePayload) {
       .values({
         name: label.name,
         color,
-        workspaceId,
+        projectId: integration.project.id,
       })
       .onConflictDoNothing({
-        target: [labelTable.workspaceId, labelTable.name],
-        where: sql`${labelTable.taskId} is null`,
+        target: [labelTable.projectId, labelTable.name],
       });
   }
 }

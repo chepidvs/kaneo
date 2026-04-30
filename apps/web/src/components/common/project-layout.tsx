@@ -1,5 +1,11 @@
 import { useLocation, useNavigate } from "@tanstack/react-router";
-import { CalendarDays, SquareKanban, SquircleDashed } from "lucide-react";
+import {
+  BookOpenText,
+  CalendarDays,
+  Shapes,
+  SquareKanban,
+  SquircleDashed,
+} from "lucide-react";
 import { type ReactNode, useState } from "react";
 import MobileProjectNav from "@/components/common/header/mobile-project-nav";
 import ProjectCrumbSelect from "@/components/common/header/project-crumb-select";
@@ -26,7 +32,7 @@ type ProjectLayoutProps = {
   headerActions?: ReactNode;
   children: ReactNode;
   showViewSwitcher?: boolean;
-  activeView?: "backlog" | "board" | "gantt";
+  activeView?: "backlog" | "board" | "gantt" | "modules" | "pages";
 };
 
 export default function ProjectLayout({
@@ -49,7 +55,11 @@ export default function ProjectLayout({
       ? "backlog"
       : location.pathname.includes("/gantt")
         ? "gantt"
-        : "board");
+        : location.pathname.includes("/modules")
+          ? "modules"
+          : location.pathname.includes("/pages")
+            ? "pages"
+            : "board");
 
   const handleNavigateToBacklog = () => {
     navigate({
@@ -72,6 +82,20 @@ export default function ProjectLayout({
     });
   };
 
+  const handleNavigateToModules = () => {
+    navigate({
+      to: "/dashboard/workspace/$workspaceId/project/$projectId/modules",
+      params: { workspaceId, projectId },
+    });
+  };
+
+  const handleNavigateToPages = () => {
+    navigate({
+      to: "/dashboard/workspace/$workspaceId/project/$projectId/pages",
+      params: { workspaceId, projectId },
+    });
+  };
+
   const handleProjectSwitch = (nextProjectId: string) => {
     navigate({
       to:
@@ -79,7 +103,11 @@ export default function ProjectLayout({
           ? "/dashboard/workspace/$workspaceId/project/$projectId/backlog"
           : resolvedView === "gantt"
             ? "/dashboard/workspace/$workspaceId/project/$projectId/gantt"
-            : "/dashboard/workspace/$workspaceId/project/$projectId/board",
+            : resolvedView === "modules"
+              ? "/dashboard/workspace/$workspaceId/project/$projectId/modules"
+              : resolvedView === "pages"
+                ? "/dashboard/workspace/$workspaceId/project/$projectId/pages"
+                : "/dashboard/workspace/$workspaceId/project/$projectId/board",
       params: {
         workspaceId,
         projectId: nextProjectId,
@@ -175,6 +203,30 @@ export default function ProjectLayout({
                 >
                   <CalendarDays className="size-3.5" />
                   Gantt
+                </Button>
+                <Button
+                  variant={resolvedView === "modules" ? "secondary" : "ghost"}
+                  size="xs"
+                  onClick={handleNavigateToModules}
+                  className={cn(
+                    "h-6 gap-1.5 rounded-md px-2 text-xs",
+                    resolvedView !== "modules" && "text-muted-foreground",
+                  )}
+                >
+                  <Shapes className="size-3.5" />
+                  Modules
+                </Button>
+                <Button
+                  variant={resolvedView === "pages" ? "secondary" : "ghost"}
+                  size="xs"
+                  onClick={handleNavigateToPages}
+                  className={cn(
+                    "h-6 gap-1.5 rounded-md px-2 text-xs",
+                    resolvedView !== "pages" && "text-muted-foreground",
+                  )}
+                >
+                  <BookOpenText className="size-3.5" />
+                  Pages
                 </Button>
               </div>
             )}

@@ -1,4 +1,4 @@
-import { Filter, PanelsTopLeft, Rows3, X } from "lucide-react";
+import { Filter, PanelsTopLeft, Rows3, Shapes, X } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import SortControl from "@/components/common/sort-control";
@@ -32,6 +32,11 @@ type ProjectLabel = {
   color: string;
 };
 
+type ProjectModule = {
+  id: string;
+  name: string;
+};
+
 type ActiveUsers = {
   members?: Array<{
     userId: string;
@@ -54,6 +59,7 @@ type BoardToolbarProps = {
   hasActiveFilters: boolean;
   users?: ActiveUsers;
   projectLabels?: ProjectLabel[];
+  projectModules?: ProjectModule[];
   viewMode: "board" | "list";
   setViewMode: (mode: "board" | "list") => void;
   sort: SortConfig;
@@ -138,6 +144,7 @@ export default function BoardToolbar({
   hasActiveFilters,
   users,
   projectLabels,
+  projectModules,
   viewMode,
   setViewMode,
   sort,
@@ -158,7 +165,13 @@ export default function BoardToolbar({
     ? filters.dueDate
     : [];
   const selectedLabelIds = Array.isArray(filters?.labels) ? filters.labels : [];
+  const selectedModuleIds = Array.isArray(filters?.modules)
+    ? filters.modules
+    : [];
   const safeProjectLabels = Array.isArray(projectLabels) ? projectLabels : [];
+  const safeProjectModules = Array.isArray(projectModules)
+    ? projectModules
+    : [];
 
   const getStatusDisplayName = (statusId: string) => {
     const column = project?.columns?.find((col) => col.id === statusId);
@@ -197,6 +210,10 @@ export default function BoardToolbar({
     return selectedLabelIds.includes(labelId);
   };
 
+  const isModuleSelected = (moduleId: string) => {
+    return selectedModuleIds.includes(moduleId);
+  };
+
   const toggleStatusFilter = (statusId: string) => {
     const exists = selectedStatusIds.includes(statusId);
     const next = exists
@@ -233,11 +250,23 @@ export default function BoardToolbar({
     updateLabelFilter(labelId);
   };
 
+  const toggleModuleFilter = (moduleId: string) => {
+    const exists = selectedModuleIds.includes(moduleId);
+    const next = exists
+      ? selectedModuleIds.filter((id) => id !== moduleId)
+      : [...selectedModuleIds, moduleId];
+    updateFilter("modules", next.length > 0 ? next : null);
+  };
+
   const clearLabelFilters = () => {
     if (selectedLabelIds.length === 0) return;
     for (const labelId of selectedLabelIds) {
       updateLabelFilter(labelId);
     }
+  };
+
+  const clearModuleFilters = () => {
+    updateFilter("modules", null);
   };
 
   return (
@@ -508,6 +537,46 @@ export default function BoardToolbar({
                   </DropdownMenuSubContent>
                 </DropdownMenuSub>
 
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger className="h-8 rounded-md text-sm">
+                    Module
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent className="w-64">
+                    <DropdownMenuItem
+                      onClick={clearModuleFilters}
+                      className="h-8 rounded-md text-sm"
+                    >
+                      <CheckSlot checked={selectedModuleIds.length === 0} />
+                      All modules
+                    </DropdownMenuItem>
+
+                    <DropdownMenuSeparator />
+
+                    {safeProjectModules.length > 0 ? (
+                      safeProjectModules.map((module) => (
+                        <DropdownMenuItem
+                          key={module.id}
+                          onClick={() => toggleModuleFilter(module.id)}
+                          className="h-8 rounded-md text-sm"
+                        >
+                          <CheckSlot checked={isModuleSelected(module.id)} />
+                          <Shapes className="size-4 text-muted-foreground" />
+                          <span className="max-w-28 truncate">
+                            {module.name}
+                          </span>
+                        </DropdownMenuItem>
+                      ))
+                    ) : (
+                      <DropdownMenuItem
+                        disabled
+                        className="h-8 rounded-md text-muted-foreground text-sm"
+                      >
+                        No modules
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+
                 {hasActiveFilters && (
                   <>
                     <DropdownMenuSeparator />
@@ -633,6 +702,23 @@ export default function BoardToolbar({
                   count: selectedLabelIds.length,
                 })}
                 onClear={clearLabelFilters}
+              />
+            )}
+
+            {selectedModuleIds.length > 0 && (
+              <ActiveFilterChip
+                subject="Module"
+                operator={t("tasks:boardFilters.operators.isAnyOf")}
+                value={
+                  selectedModuleIds.length === 1
+                    ? (safeProjectModules.find(
+                        (module) => module.id === selectedModuleIds[0],
+                      )?.name ?? "Unknown")
+                    : t("tasks:boardFilters.selectedCount", {
+                        count: selectedModuleIds.length,
+                      })
+                }
+                onClear={clearModuleFilters}
               />
             )}
           </div>

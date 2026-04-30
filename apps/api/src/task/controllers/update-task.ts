@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { columnTable, taskTable } from "../../database/schema";
+import { columnTable, moduleTable, taskTable } from "../../database/schema";
 import { assertValidTaskStatus } from "../validate-task-fields";
 
 async function updateTask(
@@ -15,6 +15,7 @@ async function updateTask(
   priority: string,
   position: number,
   userId?: string,
+  moduleId?: string | null,
 ) {
   const existingTask = await db.query.taskTable.findFirst({
     where: eq(taskTable.id, id),
@@ -35,6 +36,19 @@ async function updateTask(
     ),
   });
 
+  if (moduleId) {
+    const moduleData = await db.query.moduleTable.findFirst({
+      where: and(
+        eq(moduleTable.id, moduleId),
+        eq(moduleTable.projectId, projectId),
+      ),
+    });
+
+    if (!moduleData) {
+      throw new HTTPException(404, { message: "Module not found" });
+    }
+  }
+
   const [updatedTask] = await db
     .update(taskTable)
     .set({
@@ -48,6 +62,7 @@ async function updateTask(
       priority,
       position,
       userId: userId || null,
+      moduleId: moduleId || null,
     })
     .where(eq(taskTable.id, id))
     .returning();

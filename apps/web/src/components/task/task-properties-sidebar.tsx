@@ -6,6 +6,7 @@ import {
   Copy,
   GitBranch,
   Plus,
+  Shapes,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -23,6 +24,7 @@ import { useGetColumns } from "@/hooks/queries/column/use-get-columns";
 import useGetGiteaIntegration from "@/hooks/queries/gitea-integration/use-get-gitea-integration";
 import useGetGithubIntegration from "@/hooks/queries/github-integration/use-get-github-integration";
 import useGetLabelsByTask from "@/hooks/queries/label/use-get-labels-by-task";
+import { useGetModules } from "@/hooks/queries/module/use-get-modules";
 import useGetProject from "@/hooks/queries/project/use-get-project";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import useGetTask from "@/hooks/queries/task/use-get-task";
@@ -37,6 +39,7 @@ import { toast } from "@/lib/toast";
 import TaskAssigneePopover from "./task-assignee-popover";
 import TaskDueDatePopover from "./task-due-date-popover";
 import TaskLabelsPopover from "./task-labels-popover";
+import TaskModulePopover from "./task-module-popover";
 import TaskMovePopover from "./task-move-popover";
 import TaskPriorityPopover from "./task-priority-popover";
 import TaskStartDatePopover from "./task-start-date-popover";
@@ -85,6 +88,7 @@ export default function TaskPropertiesSidebar({
   const { data: columns = [] } = useGetColumns(projectId);
   const { data: workspaceUsers } = useGetActiveWorkspaceUsers(workspaceId);
   const { data: taskLabels = [] } = useGetLabelsByTask(taskId ?? "");
+  const { data: modules = [] } = useGetModules(projectId);
   const { data: githubIntegration } = useGetGithubIntegration(projectId);
   const { data: giteaIntegration } = useGetGiteaIntegration(projectId);
   const { data: workspaceProjects = [] } = useGetProjects({ workspaceId });
@@ -109,6 +113,7 @@ export default function TaskPropertiesSidebar({
   const assignee = workspaceUsers?.members?.find(
     (member) => member.userId === task?.userId,
   );
+  const taskModule = modules.find((module) => module.id === task?.moduleId);
 
   const handleCopyTaskLink = () => {
     navigator.clipboard.writeText(
@@ -310,6 +315,25 @@ export default function TaskPropertiesSidebar({
                   </Button>
                 </TaskDueDatePopover>
               )}
+              {task && (
+                <TaskModulePopover task={task}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="justify-start h-7 px-1.5 gap-1.5"
+                  >
+                    <Shapes className="w-3.5 h-3.5 text-muted-foreground" />
+                    <span
+                      className={cn(
+                        "text-xs font-semibold truncate max-w-[120px]",
+                        !taskModule && "text-muted-foreground",
+                      )}
+                    >
+                      {taskModule?.name ?? "No module"}
+                    </span>
+                  </Button>
+                </TaskModulePopover>
+              )}
             </div>
           </div>
         )}
@@ -494,6 +518,25 @@ export default function TaskPropertiesSidebar({
                       )}
                     </Button>
                   </TaskDueDatePopover>
+                )}
+                {task && (
+                  <TaskModulePopover task={task}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="justify-start h-7 px-1.5 gap-1.5"
+                    >
+                      <Shapes className="w-3.5 h-3.5 text-muted-foreground" />
+                      <span
+                        className={cn(
+                          "text-xs font-semibold truncate max-w-[120px]",
+                          !taskModule && "text-muted-foreground",
+                        )}
+                      >
+                        {taskModule?.name ?? "No module"}
+                      </span>
+                    </Button>
+                  </TaskModulePopover>
                 )}
               </div>
             </div>
@@ -681,6 +724,25 @@ export default function TaskPropertiesSidebar({
                       )}
                     </Button>
                   </TaskDueDatePopover>
+                )}
+                {task && (
+                  <TaskModulePopover task={task}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="justify-start h-7 px-1.5 gap-1.5 w-full"
+                    >
+                      <Shapes className="w-3.5 h-3.5 text-muted-foreground" />
+                      <span
+                        className={cn(
+                          "text-xs font-semibold truncate",
+                          !taskModule && "text-muted-foreground",
+                        )}
+                      >
+                        {taskModule?.name ?? "No module"}
+                      </span>
+                    </Button>
+                  </TaskModulePopover>
                 )}
               </div>
             </div>

@@ -211,6 +211,13 @@
 			"when": 1777367375719,
 			"tag": "0029_gifted_hercules",
 			"breakpoints": true
+		},
+		{
+			"idx": 30,
+			"version": "7",
+			"when": 1777536297696,
+			"tag": "0030_conscious_ozymandias",
+			"breakpoints": true
 		}
 	]
 }
