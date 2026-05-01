@@ -312,7 +312,7 @@ function RouteComponent() {
   return (
     <>
       <PageTitle title={t("settings:projectGeneral.pageTitle")} />
-      <div className="max-w-4xl mx-auto space-y-8">
+      <div className="mx-auto max-w-4xl space-y-8">
         <div className="space-y-2">
           <h1 className="text-2xl font-semibold">
             {t("settings:projectGeneral.title")}
@@ -332,8 +332,8 @@ function RouteComponent() {
             </p>
           </div>
 
-          <div className="space-y-4 border border-border rounded-md p-4 bg-sidebar">
-            <div className="flex items-center justify-between">
+          <div className="space-y-4 rounded-md border border-border bg-sidebar p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="space-y-0.5">
                 <p className="text-sm font-medium">
                   {t("settings:projectGeneral.iconLabel")}
@@ -371,7 +371,10 @@ function RouteComponent() {
                       </span>
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-80" align="end">
+                  <PopoverContent
+                    className="w-[min(20rem,calc(100vw-2rem))]"
+                    align="end"
+                  >
                     <div className="space-y-2">
                       <Input
                         value={iconSearch}
@@ -434,7 +437,7 @@ function RouteComponent() {
                   name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <div className="flex items-center justify-between">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div className="space-y-0.5">
                           <FormLabel className="text-sm font-medium">
                             {t("settings:projectGeneral.projectNameLabel")}
@@ -445,7 +448,7 @@ function RouteComponent() {
                         </div>
                         <FormControl>
                           <Input
-                            className="w-64"
+                            className="w-full sm:w-64"
                             placeholder={t(
                               "settings:projectGeneral.projectNamePlaceholder",
                             )}
@@ -465,7 +468,7 @@ function RouteComponent() {
                   name="slug"
                   render={({ field }) => (
                     <FormItem>
-                      <div className="flex items-center justify-between">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div className="space-y-0.5">
                           <FormLabel className="text-sm font-medium">
                             {t("settings:projectGeneral.keyLabel")}
@@ -478,7 +481,7 @@ function RouteComponent() {
                         </div>
                         <FormControl>
                           <Input
-                            className="w-64"
+                            className="w-full sm:w-64"
                             placeholder={t(
                               "settings:projectGeneral.keyPlaceholder",
                             )}
@@ -498,7 +501,7 @@ function RouteComponent() {
                   name="description"
                   render={({ field }) => (
                     <FormItem>
-                      <div className="flex items-center justify-between">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div className="space-y-0.5">
                           <FormLabel className="text-sm font-medium">
                             {t("settings:projectGeneral.descriptionLabel")}
@@ -509,7 +512,7 @@ function RouteComponent() {
                         </div>
                         <FormControl>
                           <Input
-                            className="w-64"
+                            className="w-full sm:w-64"
                             placeholder={t(
                               "settings:projectGeneral.descriptionPlaceholder",
                             )}

@@ -1,3 +1,33 @@
+## v2.7.3 | FRMWRK
+
+### Added
+- Add Module system for grouping project work.
+- Add Pages system for project knowledge base content.
+- Add public/shareable Pages with public link support.
+- Add Page list action menu for opening, copying links, publishing, privatizing, and deleting pages.
+- Add TipTap rich text editor support for Pages.
+- Add in-app notification sound for new incoming notifications.
+- Add integration coverage for comment deletion permissions.
+
+### Changed
+- Move in-app toast notifications to the top-right with topbar-safe spacing.
+- Reduce notification toast auto-dismiss duration.
+- Improve Page editor experience with fullscreen task-detail style layout.
+- Improve Page rich text formatting persistence for headings, lists, spacing, code blocks, preformatted text, and tables.
+- Improve mobile responsiveness across Settings pages.
+- Update comment deletion rules so workspace Owners can delete other users' comments while Admin and Member roles cannot.
+
+### Fixed
+- Fix Module popup layout and placeholder copy.
+- Fix missing Page save/action behavior.
+- Fix Page titles not opening the editor from the list.
+- Fix Page public/private action availability.
+- Fix Page content formatting becoming inconsistent after save and reload.
+- Fix public Page rendering mismatches for rich text content.
+- Fix Page code block, preformatted, list, heading, and table rendering issues.
+- Fix Settings layout overflow on mobile.
+- Fix comment delete UI showing broader permissions than allowed.
+
 ## v2.7.2 | FRMWRK
 
 ### 🚀 Improvements

@@ -40,6 +40,7 @@ import useGetNotifications from "@/hooks/queries/notification/use-get-notificati
 import { useRegisterShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { cn } from "@/lib/cn";
 import { formatRelativeTime } from "@/lib/format";
+import { playNotificationSound } from "@/lib/notification-sound";
 import type { Notification } from "@/types/notification";
 
 export type NotificationDropdownRef = {
@@ -252,12 +253,16 @@ const NotificationDropdown = forwardRef<NotificationDropdownRef>(
 
       const newNotificationGroups = groupNotifications(newNotifications);
 
+      if (newNotificationGroups.length > 0) {
+        playNotificationSound();
+      }
+
       newNotificationGroups.forEach((group) => {
         toastManager.add({
           title: getGroupTitle(group),
           description: getGroupContent(group),
           type: "info",
-          timeout: 8000,
+          timeout: 3200,
           actionProps: {
             children: "Open",
             onClick: () => handleNotificationClick(group.latest),

@@ -1,6 +1,8 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { createRootRouteWithContext, Outlet } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { ToastProvider } from "@/components/ui/toast";
+import { setupNotificationSoundUnlock } from "@/lib/notification-sound";
 import type { User } from "@/types/user";
 
 export const Route = createRootRouteWithContext<{
@@ -11,8 +13,12 @@ export const Route = createRootRouteWithContext<{
 });
 
 function RootComponent() {
+  useEffect(() => {
+    setupNotificationSoundUnlock();
+  }, []);
+
   return (
-    <ToastProvider position="bottom-right">
+    <ToastProvider>
       <div className="flex h-svh w-full flex-row overflow-x-hidden overflow-y-hidden bg-background scrollbar-thin scrollbar-thumb-border scrollbar-track-muted">
         <Outlet />
       </div>

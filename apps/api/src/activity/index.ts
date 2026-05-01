@@ -16,6 +16,7 @@ import updateComment from "./controllers/update-comment";
 const activity = new Hono<{
   Variables: {
     userId: string;
+    workspaceId: string;
   };
 }>()
   .get(
@@ -187,7 +188,12 @@ const activity = new Hono<{
     async (c) => {
       const { activityId } = c.req.valid("json");
       const userId = c.get("userId");
-      const deletedComment = await deleteComment(userId, activityId);
+      const workspaceId = c.get("workspaceId");
+      const deletedComment = await deleteComment(
+        userId,
+        activityId,
+        workspaceId,
+      );
       return c.json(deletedComment);
     },
   );

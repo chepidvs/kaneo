@@ -1,9 +1,9 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { commentTable } from "../../database/schema";
+import { commentTable, workspaceUserTable } from "../../database/schema";
 
-async function deleteComment(userId: string, id: string) {
+async function deleteComment(userId: string, id: string, workspaceId: string) {
   const [existing] = await db
     .select({ userId: commentTable.userId })
     .from(commentTable)
@@ -15,9 +15,22 @@ async function deleteComment(userId: string, id: string) {
   }
 
   if (existing.userId !== userId) {
-    throw new HTTPException(403, {
-      message: "Only the author can delete this comment",
-    });
+    const [workspaceMember] = await db
+      .select({ role: workspaceUserTable.role })
+      .from(workspaceUserTable)
+      .where(
+        and(
+          eq(workspaceUserTable.workspaceId, workspaceId),
+          eq(workspaceUserTable.userId, userId),
+        ),
+      )
+      .limit(1);
+
+    if (workspaceMember?.role !== "owner") {
+      throw new HTTPException(403, {
+        message: "Only the author or workspace owner can delete this comment",
+      });
+    }
   }
 
   const [deleted] = await db

@@ -13,6 +13,7 @@ import { cn } from "@/lib/cn";
 
 const toastManager = Toast.createToastManager();
 const anchoredToastManager = Toast.createToastManager();
+const DEFAULT_TOAST_TIMEOUT = 3200;
 
 const TOAST_ICONS = {
   error: CircleAlertIcon,
@@ -36,18 +37,19 @@ interface ToastProviderProps extends Toast.Provider.Props {
 
 function ToastProvider({
   children,
-  position = "bottom-right",
+  position = "top-right",
+  timeout = DEFAULT_TOAST_TIMEOUT,
   ...props
 }: ToastProviderProps) {
   return (
-    <Toast.Provider toastManager={toastManager} {...props}>
+    <Toast.Provider toastManager={toastManager} timeout={timeout} {...props}>
       {children}
       <Toasts position={position} />
     </Toast.Provider>
   );
 }
 
-function Toasts({ position = "bottom-right" }: { position: ToastPosition }) {
+function Toasts({ position = "top-right" }: { position: ToastPosition }) {
   const { toasts } = Toast.useToastManager();
   const isTop = position.startsWith("top");
 
@@ -55,9 +57,9 @@ function Toasts({ position = "bottom-right" }: { position: ToastPosition }) {
     <Toast.Portal data-slot="toast-portal">
       <Toast.Viewport
         className={cn(
-          "fixed z-[200] mx-auto flex w-[calc(100%-var(--toast-inset)*2)] max-w-90 [--toast-inset:--spacing(4)] sm:[--toast-inset:--spacing(8)]",
+          "fixed z-[200] mx-auto flex w-[calc(100%-var(--toast-inset)*2)] max-w-90 [--toast-inset:--spacing(4)] [--toast-top-offset:calc(env(safe-area-inset-top)+4rem)] sm:[--toast-inset:--spacing(8)] sm:[--toast-top-offset:calc(env(safe-area-inset-top)+4.5rem)]",
           // Vertical positioning
-          "data-[position*=top]:top-(--toast-inset)",
+          "data-[position*=top]:top-(--toast-top-offset)",
           "data-[position*=bottom]:bottom-(--toast-inset)",
           // Horizontal positioning
           "data-[position*=left]:left-(--toast-inset)",

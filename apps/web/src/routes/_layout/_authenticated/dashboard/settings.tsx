@@ -46,8 +46,8 @@ function SettingsLayout() {
   return (
     <>
       <PageTitle title={t("navigation:page.settingsTitle")} />
-      <div className="flex flex-col gap-4 p-4 bg-sidebar w-full h-full">
-        <div className="flex flex-col gap-4 bg-card h-full border border-border rounded-md p-4 relative overflow-hidden">
+      <div className="flex h-full w-full flex-col gap-3 bg-sidebar p-2 sm:gap-4 sm:p-4">
+        <div className="relative flex min-h-0 flex-col gap-4 overflow-hidden rounded-md border border-border bg-card p-3 sm:p-4">
           <div>
             <Button
               variant="ghost"
@@ -67,10 +67,10 @@ function SettingsLayout() {
               {t("navigation:page.settingsTitle")}
             </h1>
 
-            <Tabs value={activeTab} className="w-[400px] pt-2">
-              <TabsList className="bg-sidebar gap-2">
+            <Tabs value={activeTab} className="w-full max-w-full pt-2">
+              <TabsList className="max-w-full justify-start gap-2 overflow-x-auto bg-sidebar">
                 <TabsTrigger
-                  className="[&[data-state=active]]:border [&[data-state=active]]:border-border [&[data-state=active]]:rounded-md [&[data-state=active]]:bg-card"
+                  className="shrink-0 [&[data-state=active]]:rounded-md [&[data-state=active]]:border [&[data-state=active]]:border-border [&[data-state=active]]:bg-card"
                   value="account"
                   onClick={() =>
                     navigate({ to: "/dashboard/settings/account/information" })
@@ -80,7 +80,7 @@ function SettingsLayout() {
                 </TabsTrigger>
                 <TabsTrigger
                   value="workspace"
-                  className="[&[data-state=active]]:border [&[data-state=active]]:border-border [&[data-state=active]]:rounded-md [&[data-state=active]]:bg-card"
+                  className="shrink-0 [&[data-state=active]]:rounded-md [&[data-state=active]]:border [&[data-state=active]]:border-border [&[data-state=active]]:bg-card"
                   onClick={() =>
                     navigate({ to: "/dashboard/settings/workspace/general" })
                   }
@@ -90,7 +90,7 @@ function SettingsLayout() {
                 <TabsTrigger
                   disabled={projects?.length === 0}
                   value="project"
-                  className="[&[data-state=active]]:border [&[data-state=active]]:border-border [&[data-state=active]]:rounded-md [&[data-state=active]]:bg-card"
+                  className="shrink-0 [&[data-state=active]]:rounded-md [&[data-state=active]]:border [&[data-state=active]]:border-border [&[data-state=active]]:bg-card"
                   onClick={() =>
                     navigate({ to: "/dashboard/settings/projects" })
                   }
@@ -101,7 +101,7 @@ function SettingsLayout() {
             </Tabs>
           </div>
 
-          <div className="flex-1 overflow-y-auto">
+          <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
             <Outlet />
           </div>
         </div>

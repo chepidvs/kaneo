@@ -55,7 +55,7 @@ export default function CommentCard({
 }: CommentCardProps) {
   const { t } = useTranslation();
   const { user: currentUser } = useAuth();
-  const { isAdmin, isOwner } = useWorkspacePermission();
+  const { isOwner } = useWorkspacePermission();
   const [isEditing, setIsEditing] = useState(false);
   const [editedContent, setEditedContent] = useState(content);
 
@@ -69,11 +69,9 @@ export default function CommentCard({
   const isExternalComment = Boolean(externalSource);
   const isFromGitHub = externalSource === "github";
   const isOwnComment = currentUser?.id === user?.id;
-  const canManageOthersComment = isOwner || isAdmin;
 
   const canEdit = isOwnComment && !isExternalComment;
-  const canDelete =
-    !isExternalComment && (isOwnComment || canManageOthersComment);
+  const canDelete = !isExternalComment && (isOwnComment || isOwner);
 
   const githubProfileUrl =
     isFromGitHub && user?.name ? `https://github.com/${user.name}` : null;

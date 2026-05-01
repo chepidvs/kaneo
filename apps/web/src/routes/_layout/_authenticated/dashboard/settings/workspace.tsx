@@ -45,8 +45,8 @@ function RouteComponent() {
       .join("") || "WS";
 
   return (
-    <div className="flex gap-6 h-full">
-      <aside className="w-64 flex-shrink-0">
+    <div className="flex h-full min-w-0 flex-col gap-4 lg:flex-row lg:gap-6">
+      <aside className="w-full flex-shrink-0 lg:w-64">
         <div className="p-2">
           <div className="mb-1 flex items-center gap-3 rounded-md px-2 py-2">
             <Avatar className="h-8 w-8">
@@ -58,8 +58,8 @@ function RouteComponent() {
                 {workspaceInitials}
               </AvatarFallback>
             </Avatar>
-            <div className="flex flex-col">
-              <p className="text-sm">{workspace?.name}</p>
+            <div className="flex min-w-0 flex-col">
+              <p className="truncate text-sm">{workspace?.name}</p>
               <p className="text-[11px] text-sidebar-foreground/60 capitalize">
                 {t(`team:roles.${role}`, { defaultValue: role })}
               </p>
@@ -95,7 +95,7 @@ function RouteComponent() {
         </div>
       </aside>
 
-      <div className="flex-1 min-w-0 overflow-y-auto">
+      <div className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
         <Outlet />
       </div>
     </div>
