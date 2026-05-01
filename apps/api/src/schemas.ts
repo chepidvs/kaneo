@@ -26,6 +26,8 @@ export const moduleSchema = v.object({
   projectId: v.string(),
   name: v.string(),
   description: v.nullable(v.string()),
+  startDate: v.nullable(v.date()),
+  endDate: v.nullable(v.date()),
   position: v.number(),
   createdAt: v.date(),
   updatedAt: v.date(),

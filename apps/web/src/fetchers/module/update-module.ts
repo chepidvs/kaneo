@@ -2,7 +2,13 @@ import { client } from "@kaneo/libs";
 
 async function updateModule(
   id: string,
-  data: { name?: string; description?: string | null; position?: number },
+  data: {
+    name?: string;
+    description?: string | null;
+    startDate?: string | null;
+    endDate?: string | null;
+    position?: number;
+  },
 ) {
   const response = await client.module[":id"].$put({
     param: { id },

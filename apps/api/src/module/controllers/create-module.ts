@@ -7,11 +7,21 @@ async function createModule({
   projectId,
   name,
   description,
+  startDate,
+  endDate,
 }: {
   projectId: string;
   name: string;
   description?: string;
+  startDate?: Date | null;
+  endDate?: Date | null;
 }) {
+  if (startDate && endDate && endDate < startDate) {
+    throw new HTTPException(400, {
+      message: "End date must not be earlier than start date",
+    });
+  }
+
   const [maxPositionResult] = await db
     .select({ maxPosition: max(moduleTable.position) })
     .from(moduleTable)
@@ -23,6 +33,8 @@ async function createModule({
       projectId,
       name,
       description: description || null,
+      startDate: startDate ?? null,
+      endDate: endDate ?? null,
       position: (maxPositionResult?.maxPosition ?? 0) + 1,
     })
     .returning();

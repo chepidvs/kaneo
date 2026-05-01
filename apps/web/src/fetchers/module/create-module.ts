@@ -2,7 +2,12 @@ import { client } from "@kaneo/libs";
 
 async function createModule(
   projectId: string,
-  data: { name: string; description?: string },
+  data: {
+    name: string;
+    description?: string;
+    startDate?: string | null;
+    endDate?: string | null;
+  },
 ) {
   const response = await client.module.project[":projectId"].$post({
     param: { projectId },

@@ -10,7 +10,12 @@ export function useCreateModule() {
       data,
     }: {
       projectId: string;
-      data: { name: string; description?: string };
+      data: {
+        name: string;
+        description?: string;
+        startDate?: string | null;
+        endDate?: string | null;
+      };
     }) => createModule(projectId, data),
     onSuccess: async (_, { projectId }) => {
       await queryClient.invalidateQueries({ queryKey: ["modules", projectId] });

@@ -10,7 +10,13 @@ export function useUpdateModule() {
       data,
     }: {
       id: string;
-      data: { name?: string; description?: string | null; position?: number };
+      data: {
+        name?: string;
+        description?: string | null;
+        startDate?: string | null;
+        endDate?: string | null;
+        position?: number;
+      };
     }) => updateModule(id, data),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["modules"] });

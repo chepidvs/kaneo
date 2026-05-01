@@ -8,6 +8,7 @@ import {
   CalendarX,
   GitMerge,
   GitPullRequest,
+  Shapes,
 } from "lucide-react";
 import { type CSSProperties, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -28,6 +29,7 @@ import {
 } from "@/components/ui/preview-card";
 import { useDeleteTask } from "@/hooks/mutations/task/use-delete-task";
 import useExternalLinks from "@/hooks/queries/external-link/use-external-links";
+import { useGetModules } from "@/hooks/queries/module/use-get-modules";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
 import { dueDateStatusColors, getDueDateStatus } from "@/lib/due-date-status";
@@ -70,9 +72,15 @@ function TaskCard({ task }: TaskCardProps) {
   } = useUserPreferencesStore();
   const [isDeleteTaskModalOpen, setIsDeleteTaskModalOpen] = useState(false);
   const { data: externalLinks } = useExternalLinks(task.id);
+  const { data: modules = [] } = useGetModules(task.projectId);
   const { toggleSelection, isSelected, isFocused } = useBulkSelectionStore();
   const isTaskSelected = isSelected(task.id);
   const isTaskFocused = isFocused(task.id);
+
+  const taskModule = useMemo(() => {
+    if (!task.moduleId) return null;
+    return modules.find((module) => module.id === task.moduleId) ?? null;
+  }, [modules, task.moduleId]);
 
   const pullRequests = useMemo(() => {
     if (!externalLinks) return [];
@@ -245,6 +253,15 @@ function TaskCard({ task }: TaskCardProps) {
             {showLabels && (
               <div className="mb-2.5">
                 <TaskCardLabels taskId={task.id} />
+              </div>
+            )}
+
+            {taskModule && (
+              <div className="mb-2.5">
+                <span className="inline-flex max-w-full items-center gap-1.5 rounded border border-border/70 bg-muted/55 px-2 py-1 text-[10px] font-medium text-muted-foreground">
+                  <Shapes className="h-3 w-3 shrink-0" />
+                  <span className="truncate">{taskModule.name}</span>
+                </span>
               </div>
             )}
 

@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { HTTPException } from "hono/http-exception";
 import { describeRoute, resolver, validator } from "hono-openapi";
 import * as v from "valibot";
 import { moduleSchema } from "../schemas";
@@ -8,6 +9,20 @@ import deleteModule from "./controllers/delete-module";
 import getModule from "./controllers/get-module";
 import getModules from "./controllers/get-modules";
 import updateModule from "./controllers/update-module";
+
+function parseModuleDate(value?: string | null) {
+  if (!value) {
+    return value === null ? null : undefined;
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    throw new HTTPException(400, { message: "Invalid module date" });
+  }
+
+  return date;
+}
 
 const module = new Hono<{
   Variables: {
@@ -58,16 +73,20 @@ const module = new Hono<{
       v.object({
         name: v.string(),
         description: v.optional(v.string()),
+        startDate: v.optional(v.nullable(v.string())),
+        endDate: v.optional(v.nullable(v.string())),
       }),
     ),
     workspaceAccess.fromProject("projectId"),
     async (c) => {
       const { projectId } = c.req.valid("param");
-      const { name, description } = c.req.valid("json");
+      const { name, description, startDate, endDate } = c.req.valid("json");
       const createdModule = await createModule({
         projectId,
         name,
         description,
+        startDate: parseModuleDate(startDate),
+        endDate: parseModuleDate(endDate),
       });
       return c.json(createdModule);
     },
@@ -116,6 +135,8 @@ const module = new Hono<{
       v.object({
         name: v.optional(v.string()),
         description: v.optional(v.nullable(v.string())),
+        startDate: v.optional(v.nullable(v.string())),
+        endDate: v.optional(v.nullable(v.string())),
         position: v.optional(v.number()),
       }),
     ),
@@ -123,7 +144,21 @@ const module = new Hono<{
     async (c) => {
       const { id } = c.req.valid("param");
       const data = c.req.valid("json");
-      const updatedModule = await updateModule(id, data);
+      const updateData: Parameters<typeof updateModule>[1] = {
+        name: data.name,
+        description: data.description,
+        position: data.position,
+      };
+
+      if (data.startDate !== undefined) {
+        updateData.startDate = parseModuleDate(data.startDate);
+      }
+
+      if (data.endDate !== undefined) {
+        updateData.endDate = parseModuleDate(data.endDate);
+      }
+
+      const updatedModule = await updateModule(id, updateData);
       return c.json(updatedModule);
     },
   )

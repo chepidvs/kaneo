@@ -266,6 +266,8 @@ export const moduleTable = pgTable(
       }),
     name: text("name").notNull(),
     description: text("description"),
+    startDate: timestamp("start_date", { mode: "date" }),
+    endDate: timestamp("end_date", { mode: "date" }),
     position: integer("position").notNull().default(0),
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { mode: "date" })
