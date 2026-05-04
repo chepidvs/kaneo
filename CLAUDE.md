@@ -8,6 +8,41 @@ Kaneo is a self-hosted project management platform built with simplicity and per
 
 **Key Philosophy**: Features exist to solve real problems, not to impress. Avoid over-engineering - keep solutions simple and focused. Don't add features, refactoring, or improvements beyond what was asked.
 
+# CLAUDE.md — Kaneo Project Instructions
+
+## 🔴 CRITICAL — LOAD CONTEXT FIRST
+
+Before answering ANY request, you MUST:
+
+1. Read:
+   - docs/context.md
+   - docs/decisions.md
+   - docs/todo.md
+
+2. After reading:
+   - Summarize the project briefly
+   - Confirm understanding
+
+3. ONLY THEN continue the task
+
+These files are the SINGLE SOURCE OF TRUTH for this project.
+
+Do NOT stop after reading CLAUDE.md.
+You MUST continue reading the docs files above.
+
+---
+
+## ⚙️ WORKFLOW
+
+LOCAL → TEST → COMMIT → PUSH → DEPLOY
+
+Rules:
+- Never edit production VPS
+- Never push without user approval
+- Never skip testing
+
+---
+
 ## Development Commands
 
 ### Getting Started
