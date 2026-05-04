@@ -252,6 +252,34 @@ export const projectMemberTable = pgTable(
   ],
 );
 
+export const workspaceRolePermissionsTable = pgTable(
+  "workspace_role_permissions",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaceTable.id, { onDelete: "cascade" }),
+    role: text("role").notNull(),
+    permissions: jsonb("permissions")
+      .notNull()
+      .$type<Record<string, string[]>>(),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("workspace_role_permissions_workspaceId_idx").on(table.workspaceId),
+    unique("workspace_role_permissions_workspace_role_unique").on(
+      table.workspaceId,
+      table.role,
+    ),
+  ],
+);
+
 export const moduleTable = pgTable(
   "module",
   {

@@ -6,6 +6,10 @@ export function isWorkspaceManager(role?: string | null) {
   return role === "owner" || role === "admin";
 }
 
+export function isWorkspaceOwner(role?: string | null) {
+  return role === "owner";
+}
+
 export function canManageProjectAccess(role?: string | null) {
   return role === "owner";
 }
@@ -41,7 +45,7 @@ export async function canAccessProject(params: {
   );
 
   if (!workspaceRole) return false;
-  if (isWorkspaceManager(workspaceRole)) return true;
+  if (isWorkspaceOwner(workspaceRole)) return true;
   if (params.isPublic) return true;
 
   const [projectMember] = await db

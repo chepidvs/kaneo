@@ -3,7 +3,7 @@ import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useGetActiveWorkspaceUser } from "@/hooks/queries/workspace-users/use-active-workspace-user";
 import { authClient } from "@/lib/auth-client";
 
-export type PermissionLevel = "owner" | "admin" | "member";
+export type PermissionLevel = "owner" | "admin" | "member" | "guest";
 
 export function useWorkspacePermission() {
   const { data: activeWorkspace } = useActiveWorkspace();
@@ -11,7 +11,6 @@ export function useWorkspacePermission() {
 
   const permissionCheckers = useMemo(
     () => ({
-      // Server-side permission checking (most secure)
       async hasPermission(permissions: Record<string, string[]>) {
         try {
           const result = await authClient.organization.hasPermission({
@@ -24,7 +23,6 @@ export function useWorkspacePermission() {
         }
       },
 
-      // Client-side role-based checking (faster for UI)
       checkRolePermission(permissions: Record<string, string[]>) {
         if (!activeMember?.role) return false;
         try {
@@ -38,7 +36,6 @@ export function useWorkspacePermission() {
         }
       },
 
-      // Convenience methods for common checks
       canManageProjects() {
         return this.checkRolePermission({
           project: ["create", "update", "delete"],
@@ -81,26 +78,27 @@ export function useWorkspacePermission() {
         return this.checkRolePermission({ team: ["remove"] });
       },
 
-      // Legacy compatibility method
       checkPermission(requiredRole: PermissionLevel = "member"): boolean {
         if (!activeWorkspace || !activeMember) return false;
 
         const userRole = activeMember.role as PermissionLevel;
+        const hierarchy: PermissionLevel[] = [
+          "owner",
+          "admin",
+          "member",
+          "guest",
+        ];
 
-        if (requiredRole === "owner") {
-          return userRole === "owner";
-        }
+        const userIndex = hierarchy.indexOf(userRole);
+        const requiredIndex = hierarchy.indexOf(requiredRole);
 
-        if (requiredRole === "admin") {
-          return ["owner", "admin"].includes(userRole);
-        }
-
-        // For member level, all roles have access
-        return ["owner", "admin", "member"].includes(userRole);
+        if (userIndex === -1 || requiredIndex === -1) return false;
+        return userIndex <= requiredIndex;
       },
 
       isOwner: activeMember?.role === "owner",
       isAdmin: ["owner", "admin"].includes(activeMember?.role || ""),
+      isGuest: activeMember?.role === "guest",
       role: activeMember?.role as PermissionLevel | undefined,
     }),
     [activeMember, activeWorkspace],

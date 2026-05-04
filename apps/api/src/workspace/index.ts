@@ -8,9 +8,12 @@ import { userTable } from "../database/schema";
 import {
   getWorkspaceRole,
   isWorkspaceManager,
+  isWorkspaceOwner,
 } from "../utils/permissions/project-access";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
+import { getRolePermissions } from "./controllers/get-role-permissions";
 import getWorkspaceMembersCtrl from "./controllers/get-workspace-members";
+import { updateRolePermissions } from "./controllers/update-role-permissions";
 
 const workspace = new Hono<{
   Variables: {
@@ -171,6 +174,62 @@ const workspace = new Hono<{
         });
 
       return c.json(updatedUser);
+    },
+  )
+  .get(
+    "/:workspaceId/role-permissions",
+    describeRoute({
+      operationId: "getRolePermissions",
+      tags: ["Workspaces"],
+      description: "Get role permissions for a workspace",
+      responses: {
+        200: { description: "Role permissions" },
+      },
+    }),
+    validator("param", v.object({ workspaceId: v.string() })),
+    workspaceAccess.fromParam("workspaceId"),
+    async (c) => {
+      const workspaceId = c.get("workspaceId");
+      const permissions = await getRolePermissions(workspaceId);
+      return c.json(permissions);
+    },
+  )
+  .put(
+    "/:workspaceId/role-permissions/:role",
+    describeRoute({
+      operationId: "updateRolePermissions",
+      tags: ["Workspaces"],
+      description: "Update permissions for a specific role (owner only)",
+      responses: {
+        200: { description: "Updated permissions" },
+      },
+    }),
+    validator("param", v.object({ workspaceId: v.string(), role: v.string() })),
+    validator(
+      "json",
+      v.object({ permissions: v.record(v.string(), v.array(v.string())) }),
+    ),
+    workspaceAccess.fromParam("workspaceId"),
+    async (c) => {
+      const actorUserId = c.get("userId");
+      const workspaceId = c.get("workspaceId");
+      const { role } = c.req.valid("param");
+      const { permissions } = c.req.valid("json");
+
+      const actorRole = await getWorkspaceRole(actorUserId, workspaceId);
+
+      if (!isWorkspaceOwner(actorRole)) {
+        throw new HTTPException(403, {
+          message: "Only workspace owner can manage role permissions",
+        });
+      }
+
+      const updated = await updateRolePermissions(
+        workspaceId,
+        role,
+        permissions,
+      );
+      return c.json(updated);
     },
   );
 

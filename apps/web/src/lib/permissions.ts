@@ -6,40 +6,40 @@ import {
   ownerAc,
 } from "better-auth/plugins/organization/access";
 
-// Define custom permissions for workspace-specific resources
 const statement = {
-  ...defaultStatements, // Include default org/member/invitation permissions
+  ...defaultStatements,
   project: ["create", "read", "update", "delete", "share"],
   task: ["create", "read", "update", "delete", "assign"],
   workspace: ["read", "update", "delete", "manage_settings"],
-  // team: ["invite", "remove", "manage_roles"],
 } as const;
 
 const ac = createAccessControl(statement);
 
-// Custom role definitions that extend default permissions
 const member = ac.newRole({
-  ...memberAc.statements, // Inherit default member permissions
+  ...memberAc.statements,
   project: ["create", "read"],
   task: ["create", "read", "update"],
   workspace: ["read"],
-  // team: ["invite"], // Members can invite others
 });
 
 const admin = ac.newRole({
-  ...adminAc.statements, // Inherit default admin permissions
+  ...adminAc.statements,
   project: ["create", "read", "update", "delete", "share"],
   task: ["create", "read", "update", "delete", "assign"],
   workspace: ["read", "update", "manage_settings"],
-  // team: ["invite", "remove", "manage_roles"],
 });
 
 const owner = ac.newRole({
-  ...ownerAc.statements, // Inherit default owner permissions
+  ...ownerAc.statements,
   project: ["create", "read", "update", "delete", "share"],
   task: ["create", "read", "update", "delete", "assign"],
   workspace: ["read", "update", "delete", "manage_settings"],
-  // team: ["invite", "remove", "manage_roles"],
 });
 
-export { ac, admin, member, owner, statement };
+const guest = ac.newRole({
+  project: ["read"],
+  task: ["read"],
+  workspace: ["read"],
+});
+
+export { ac, admin, guest, member, owner, statement };
