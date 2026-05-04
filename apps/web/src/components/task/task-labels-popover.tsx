@@ -238,7 +238,7 @@ export default function TaskLabelsPopover({
               }}
             />
 
-            <span className="max-w-20 truncate">{label.name}</span>
+            <span className="min-w-0 flex-1 truncate">{label.name}</span>
           </button>
         ))}
 
@@ -297,7 +297,7 @@ export default function TaskLabelsPopover({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger nativeButton={triggerNativeButton} render={children} />
-      <PopoverContent className="w-[240px] p-0" align="start">
+      <PopoverContent className="w-[280px] p-0" align="start">
         {step === "select" ? renderSelectStep() : renderColorStep()}
       </PopoverContent>
     </Popover>
