@@ -1310,6 +1310,17 @@
 				"includeAnyOf": "incluye alguno de"
 			}
 		},
+		"savedViews": {
+			"save": "Save view",
+			"namePlaceholder": "View name...",
+			"confirm": "Save",
+			"cancel": "Cancel",
+			"title": "Saved views",
+			"empty": "No saved views yet",
+			"apply": "Apply",
+			"delete": "Delete",
+			"saveSuccess": "View saved"
+		},
 		"gantt": {
 			"pageTitle": "{{name}} — Gantt",
 			"title": "Diagrama de Gantt",

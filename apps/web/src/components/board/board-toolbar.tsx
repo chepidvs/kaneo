@@ -1,5 +1,15 @@
-import { Filter, PanelsTopLeft, Rows3, Shapes, X } from "lucide-react";
-import type { ReactNode } from "react";
+import {
+  Bookmark,
+  BookmarkCheck,
+  BookmarkPlus,
+  Filter,
+  PanelsTopLeft,
+  Rows3,
+  Shapes,
+  Trash2,
+  X,
+} from "lucide-react";
+import { type ReactNode, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import SortControl from "@/components/common/sort-control";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -16,6 +26,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/menu";
 import labelColors from "@/constants/label-colors";
+import type { SavedView } from "@/hooks/use-saved-views";
 import {
   type BoardFilters,
   DUE_DATE_FILTER_VALUES,
@@ -64,6 +75,10 @@ type BoardToolbarProps = {
   setViewMode: (mode: "board" | "list") => void;
   sort: SortConfig;
   onSortChange: (sort: SortConfig) => void;
+  savedViews: SavedView[];
+  saveView: (name: string, filters: BoardFilters) => void;
+  deleteView: (id: string) => void;
+  applyView: (filters: BoardFilters) => void;
 };
 
 function CheckSlot({ checked }: { checked: boolean }) {
@@ -149,8 +164,34 @@ export default function BoardToolbar({
   setViewMode,
   sort,
   onSortChange,
+  savedViews,
+  saveView,
+  deleteView,
+  applyView,
 }: BoardToolbarProps) {
   const { t } = useTranslation();
+  const [isSavingView, setIsSavingView] = useState(false);
+  const [viewName, setViewName] = useState("");
+  const viewNameInputRef = useRef<HTMLInputElement>(null);
+
+  const handleOpenSaveView = () => {
+    setIsSavingView(true);
+    setViewName("");
+    window.requestAnimationFrame(() => viewNameInputRef.current?.focus());
+  };
+
+  const handleConfirmSaveView = () => {
+    const trimmed = viewName.trim();
+    if (!trimmed) return;
+    saveView(trimmed, filters);
+    setIsSavingView(false);
+    setViewName("");
+  };
+
+  const handleCancelSaveView = () => {
+    setIsSavingView(false);
+    setViewName("");
+  };
 
   const selectedStatusIds = Array.isArray(filters?.status)
     ? filters.status
@@ -592,6 +633,99 @@ export default function BoardToolbar({
             </DropdownMenu>
 
             <SortControl sort={sort} onSortChange={onSortChange} />
+
+            {/* Saved views dropdown */}
+            {savedViews.length > 0 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  render={
+                    <button
+                      type="button"
+                      className="inline-flex h-7 items-center gap-1.5 rounded-md border border-border bg-background px-2.5 text-foreground text-xs font-medium outline-none ring-0 hover:bg-accent/60"
+                    />
+                  }
+                >
+                  <BookmarkCheck className="h-3 w-3" />
+                  {t("tasks:savedViews.title")}
+                  <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary/15 px-1 text-[10px] font-semibold text-primary">
+                    {savedViews.length}
+                  </span>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56" align="start">
+                  <DropdownMenuLabel className="text-[11px] uppercase tracking-wide">
+                    {t("tasks:savedViews.title")}
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {savedViews.map((view) => (
+                    <DropdownMenuItem
+                      key={view.id}
+                      className="flex items-center justify-between gap-2 pr-1"
+                      onClick={() => applyView(view.filters)}
+                    >
+                      <span className="flex-1 truncate text-sm">
+                        {view.name}
+                      </span>
+                      <button
+                        type="button"
+                        className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/15 hover:text-destructive"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteView(view.id);
+                        }}
+                        title={t("tasks:savedViews.delete")}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+
+            {/* Save view button / inline input */}
+            {hasActiveFilters && !isSavingView && (
+              <button
+                type="button"
+                onClick={handleOpenSaveView}
+                className="inline-flex h-7 items-center gap-1.5 rounded-md border border-dashed border-border bg-background px-2.5 text-xs font-medium text-muted-foreground outline-none hover:border-solid hover:bg-accent/60 hover:text-foreground"
+              >
+                <BookmarkPlus className="h-3 w-3" />
+                {t("tasks:savedViews.save")}
+              </button>
+            )}
+
+            {isSavingView && (
+              <div className="inline-flex h-7 items-center gap-1 rounded-md border border-primary/40 bg-background px-1.5 shadow-xs">
+                <Bookmark className="h-3 w-3 shrink-0 text-muted-foreground" />
+                <input
+                  ref={viewNameInputRef}
+                  type="text"
+                  value={viewName}
+                  onChange={(e) => setViewName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleConfirmSaveView();
+                    if (e.key === "Escape") handleCancelSaveView();
+                  }}
+                  placeholder={t("tasks:savedViews.namePlaceholder")}
+                  className="h-full w-32 bg-transparent text-xs text-foreground placeholder:text-muted-foreground/60 outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={handleConfirmSaveView}
+                  disabled={!viewName.trim()}
+                  className="inline-flex h-5 items-center rounded px-1.5 text-[11px] font-medium bg-primary/10 text-primary hover:bg-primary/20 disabled:opacity-40"
+                >
+                  {t("tasks:savedViews.confirm")}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCancelSaveView}
+                  className="inline-flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-accent"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            )}
 
             {selectedStatusIds.length > 0 && (
               <ActiveFilterChip

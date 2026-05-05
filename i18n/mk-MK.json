@@ -1536,6 +1536,17 @@
 				"includeAnyOf": "вклучува било кој од"
 			}
 		},
+		"savedViews": {
+			"save": "Save view",
+			"namePlaceholder": "View name...",
+			"confirm": "Save",
+			"cancel": "Cancel",
+			"title": "Saved views",
+			"empty": "No saved views yet",
+			"apply": "Apply",
+			"delete": "Delete",
+			"saveSuccess": "View saved"
+		},
 		"gantt": {
 			"pageTitle": "{{name}} — Gantt",
 			"title": "Gantt временска линија",

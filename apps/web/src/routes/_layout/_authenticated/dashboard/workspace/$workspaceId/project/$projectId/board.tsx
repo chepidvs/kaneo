@@ -16,6 +16,7 @@ import { useGetModules } from "@/hooks/queries/module/use-get-modules";
 import { useGetTasks } from "@/hooks/queries/task/use-get-tasks";
 import { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
 import { useRegisterShortcuts } from "@/hooks/use-keyboard-shortcuts";
+import { useSavedViews } from "@/hooks/use-saved-views";
 import { useTaskFiltersWithLabelsSupport } from "@/hooks/use-task-filters-with-labels-support";
 import type { SortConfig } from "@/lib/sort-tasks";
 import { sortTasks } from "@/lib/sort-tasks";
@@ -163,12 +164,15 @@ function RouteComponent() {
 
   const {
     filters,
+    setFilters,
     updateFilter,
     updateLabelFilter,
     filteredProject,
     hasActiveFilters,
     clearFilters,
   } = useTaskFiltersWithLabelsSupport(project, projectId, boardSearchQuery);
+
+  const { savedViews, saveView, deleteView } = useSavedViews(projectId);
 
   const sortedProject = useMemo(() => {
     if (!filteredProject || sort.field === "position") return filteredProject;
@@ -236,6 +240,10 @@ function RouteComponent() {
           setViewMode={setViewMode}
           sort={sort}
           onSortChange={setSort}
+          savedViews={savedViews}
+          saveView={saveView}
+          deleteView={deleteView}
+          applyView={setFilters}
         />
 
         <div className="flex h-full flex-1 overflow-hidden bg-background">
