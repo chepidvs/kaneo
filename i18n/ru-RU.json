@@ -1626,7 +1626,10 @@
 		"actions": {
 			"archive": "Архивировать",
 			"markAsPlanned": "Отметить как запланированную",
-			"delete": "Удалить..."
+			"delete": "Удалить...",
+			"clone": "Клонировать",
+			"cloneSuccess": "Задача клонирована",
+			"cloneError": "Ошибка при клонировании"
 		},
 		"bulk": {
 			"selectedCount_one": "{{count}} выбрана",

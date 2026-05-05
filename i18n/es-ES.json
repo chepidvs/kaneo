@@ -1379,7 +1379,10 @@
 		"actions": {
 			"archive": "Archivar",
 			"markAsPlanned": "Marcar como planeada",
-			"delete": "Eliminar..."
+			"delete": "Eliminar...",
+			"clone": "Clonar",
+			"cloneSuccess": "Tarea clonada",
+			"cloneError": "Error al clonar"
 		},
 		"bulk": {
 			"selectedCount": "{{count}} seleccionadas",

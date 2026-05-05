@@ -1380,7 +1380,10 @@
 		"actions": {
 			"archive": "Archiveren",
 			"markAsPlanned": "Markeren als gepland",
-			"delete": "Verwijderen..."
+			"delete": "Verwijderen...",
+			"clone": "Kopiëren",
+			"cloneSuccess": "Taak gekopieerd",
+			"cloneError": "Kopiëren mislukt"
 		},
 		"bulk": {
 			"selectedCount": "{{count}} geselecteerd",

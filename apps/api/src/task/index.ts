@@ -21,6 +21,7 @@ import {
 } from "../storage/s3";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
 import bulkUpdateTasks from "./controllers/bulk-update-tasks";
+import cloneTask from "./controllers/clone-task";
 import createTask from "./controllers/create-task";
 import deleteTask from "./controllers/delete-task";
 import exportTasks from "./controllers/export-tasks";
@@ -158,6 +159,30 @@ const task = new Hono<{
       });
 
       return c.json(result);
+    },
+  )
+  .post(
+    "/clone/:id",
+    describeRoute({
+      operationId: "cloneTask",
+      tags: ["Tasks"],
+      description: "Clone an existing task including its labels and modules",
+      responses: {
+        200: {
+          description: "Cloned task",
+          content: {
+            "application/json": { schema: resolver(taskSchema) },
+          },
+        },
+      },
+    }),
+    validator("param", v.object({ id: v.string() })),
+    workspaceAccess.fromTask(),
+    async (c) => {
+      const { id } = c.req.valid("param");
+      const userId = c.get("userId") || undefined;
+      const task = await cloneTask(id, userId);
+      return c.json(task);
     },
   )
   .post(

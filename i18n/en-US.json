@@ -1607,7 +1607,10 @@
 		"actions": {
 			"archive": "Archive",
 			"markAsPlanned": "Mark as planned",
-			"delete": "Delete..."
+			"delete": "Delete...",
+			"clone": "Clone",
+			"cloneSuccess": "Task cloned",
+			"cloneError": "Failed to clone task"
 		},
 		"bulk": {
 			"selectedCount": "{{count}} selected",

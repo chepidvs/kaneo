@@ -1611,7 +1611,10 @@
 		"actions": {
 			"archive": "Архівувати",
 			"markAsPlanned": "Позначити як заплановане",
-			"delete": "Видалити..."
+			"delete": "Видалити...",
+			"clone": "Клонувати",
+			"cloneSuccess": "Завдання клоновано",
+			"cloneError": "Помилка клонування"
 		},
 		"bulk": {
 			"selectedCount": "{{count}} обрано",

@@ -1605,7 +1605,10 @@
 		"actions": {
 			"archive": "Archiver",
 			"markAsPlanned": "Marquer comme planifié",
-			"delete": "Supprimer..."
+			"delete": "Supprimer...",
+			"clone": "Dupliquer",
+			"cloneSuccess": "Tâche dupliquée",
+			"cloneError": "Échec de la duplication"
 		},
 		"bulk": {
 			"selectedCount": "{{count}} sélectionné",

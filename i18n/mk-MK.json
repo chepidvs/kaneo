@@ -1605,7 +1605,10 @@
 		"actions": {
 			"archive": "Архивирај",
 			"markAsPlanned": "Означи како планирана",
-			"delete": "Избриши..."
+			"delete": "Избриши...",
+			"clone": "Клонирај",
+			"cloneSuccess": "Задачата е клонирана",
+			"cloneError": "Грешка при клонирање"
 		},
 		"bulk": {
 			"selectedCount": "{{count}} избрани",

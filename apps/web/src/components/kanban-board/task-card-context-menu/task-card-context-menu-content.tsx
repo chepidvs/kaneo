@@ -1,3 +1,4 @@
+import { useNavigate } from "@tanstack/react-router";
 import { X } from "lucide-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -12,6 +13,7 @@ import {
   ContextMenuSubContent,
   ContextMenuSubTrigger,
 } from "@/components/ui/context-menu";
+import useCloneTask from "@/hooks/mutations/task/use-clone-task";
 import { useUpdateTask } from "@/hooks/mutations/task/use-update-task";
 import { useUpdateTaskAssignee } from "@/hooks/mutations/task/use-update-task-assignee";
 import { useUpdateTaskDescription } from "@/hooks/mutations/task/use-update-task-description";
@@ -46,8 +48,10 @@ export default function TaskCardContextMenuContent({
   onDeleteClick,
 }: TaskCardContextMenuContentProps) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { project } = useProjectStore();
   const { data: columnsData = [] } = useGetColumns(taskCardContext.projectId);
+  const { mutateAsync: cloneTaskMutation } = useCloneTask();
   const columns =
     project?.columns && project.columns.length > 0
       ? project.columns.map((col) => ({
@@ -86,6 +90,21 @@ export default function TaskCardContextMenuContent({
 
     navigator.clipboard.writeText(taskLink);
     toast.success(t("tasks:contextMenu.copyLinkSuccess"));
+  };
+
+  const handleCloneTask = async () => {
+    try {
+      const cloned = await cloneTaskMutation({
+        taskId: task.id,
+        projectId: taskCardContext.projectId,
+      });
+      navigate({ to: ".", search: { taskId: cloned.id } });
+      toast.success(t("tasks:actions.cloneSuccess"));
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : t("tasks:actions.cloneError"),
+      );
+    }
   };
 
   const handleChange = async (field: keyof Task, value: string | Date) => {
@@ -128,6 +147,10 @@ export default function TaskCardContextMenuContent({
     <ContextMenuContent className="w-46">
       <ContextMenuItem onClick={handleCopyTaskLink}>
         <span>{t("tasks:contextMenu.copyLink")}</span>
+      </ContextMenuItem>
+
+      <ContextMenuItem onClick={handleCloneTask}>
+        <span>{t("tasks:actions.clone")}</span>
       </ContextMenuItem>
 
       <ContextMenuSeparator />
