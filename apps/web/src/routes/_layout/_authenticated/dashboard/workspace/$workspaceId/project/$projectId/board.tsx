@@ -17,6 +17,7 @@ import { useGetTasks } from "@/hooks/queries/task/use-get-tasks";
 import { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
 import { useRegisterShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { useSavedViews } from "@/hooks/use-saved-views";
+import type { BoardFilters } from "@/hooks/use-task-filters";
 import { useTaskFiltersWithLabelsSupport } from "@/hooks/use-task-filters-with-labels-support";
 import type { SortConfig } from "@/lib/sort-tasks";
 import { sortTasks } from "@/lib/sort-tasks";
@@ -173,6 +174,27 @@ function RouteComponent() {
   } = useTaskFiltersWithLabelsSupport(project, projectId, boardSearchQuery);
 
   const { savedViews, saveView, deleteView } = useSavedViews(projectId);
+  const [activeViewId, setActiveViewId] = useState<string | null>(null);
+
+  const handleUpdateFilter: typeof updateFilter = (key, value) => {
+    setActiveViewId(null);
+    updateFilter(key, value);
+  };
+
+  const handleUpdateLabelFilter: typeof updateLabelFilter = (labelId) => {
+    setActiveViewId(null);
+    updateLabelFilter(labelId);
+  };
+
+  const handleClearFilters = () => {
+    setActiveViewId(null);
+    clearFilters();
+  };
+
+  const handleApplyView = (viewId: string, viewFilters: BoardFilters) => {
+    setActiveViewId(viewId);
+    setFilters(viewFilters);
+  };
 
   const sortedProject = useMemo(() => {
     if (!filteredProject || sort.field === "position") return filteredProject;
@@ -229,9 +251,9 @@ function RouteComponent() {
         <BoardToolbar
           project={project}
           filters={filters}
-          updateFilter={updateFilter}
-          updateLabelFilter={updateLabelFilter}
-          clearFilters={clearFilters}
+          updateFilter={handleUpdateFilter}
+          updateLabelFilter={handleUpdateLabelFilter}
+          clearFilters={handleClearFilters}
           hasActiveFilters={hasActiveFilters}
           users={users}
           projectLabels={projectLabels}
@@ -243,7 +265,8 @@ function RouteComponent() {
           savedViews={savedViews}
           saveView={saveView}
           deleteView={deleteView}
-          applyView={setFilters}
+          applyView={handleApplyView}
+          activeViewId={activeViewId}
         />
 
         <div className="flex h-full flex-1 overflow-hidden bg-background">

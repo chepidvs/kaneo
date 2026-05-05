@@ -78,7 +78,8 @@ type BoardToolbarProps = {
   savedViews: SavedView[];
   saveView: (name: string, filters: BoardFilters) => void;
   deleteView: (id: string) => void;
-  applyView: (filters: BoardFilters) => void;
+  applyView: (viewId: string, filters: BoardFilters) => void;
+  activeViewId: string | null;
 };
 
 function CheckSlot({ checked }: { checked: boolean }) {
@@ -168,6 +169,7 @@ export default function BoardToolbar({
   saveView,
   deleteView,
   applyView,
+  activeViewId,
 }: BoardToolbarProps) {
   const { t } = useTranslation();
   const [isSavingView, setIsSavingView] = useState(false);
@@ -646,10 +648,15 @@ export default function BoardToolbar({
                   }
                 >
                   <BookmarkCheck className="h-3 w-3" />
-                  {t("tasks:savedViews.title")}
-                  <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary/15 px-1 text-[10px] font-semibold text-primary">
-                    {savedViews.length}
-                  </span>
+                  {activeViewId
+                    ? (savedViews.find((v) => v.id === activeViewId)?.name ??
+                      t("tasks:savedViews.title"))
+                    : t("tasks:savedViews.title")}
+                  {!activeViewId && (
+                    <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary/15 px-1 text-[10px] font-semibold text-primary">
+                      {savedViews.length}
+                    </span>
+                  )}
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-56" align="start">
                   <DropdownMenuGroup>
@@ -662,7 +669,7 @@ export default function BoardToolbar({
                     <DropdownMenuItem
                       key={view.id}
                       className="flex items-center justify-between gap-2 pr-1"
-                      onClick={() => applyView(view.filters)}
+                      onClick={() => applyView(view.id, view.filters)}
                     >
                       <span className="flex-1 truncate text-sm">
                         {view.name}
