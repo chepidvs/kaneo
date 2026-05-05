@@ -111,10 +111,9 @@ function TaskCard({ task }: TaskCardProps) {
 
   const style: CSSProperties = {
     transform: CSS.Transform.toString(transform),
-    transition:
-      transition || "transform 250ms cubic-bezier(0.25, 0.46, 0.45, 0.94)",
-    opacity: isDragging ? 0.6 : 1,
-    touchAction: isDragging ? "none" : "auto",
+    transition: isDragging ? undefined : (transition ?? "transform 150ms ease"),
+    opacity: isDragging ? 0 : 1,
+    touchAction: "none",
     zIndex: isDragging ? 999 : "auto",
   };
 

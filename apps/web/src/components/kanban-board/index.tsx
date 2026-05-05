@@ -91,12 +91,12 @@ function KanbanBoard({ project, disableDragDrop = false }: KanbanBoardProps) {
 
   const sensors = useSensors(
     useSensor(MouseSensor, {
-      activationConstraint: { distance: disableDragDrop ? 999999 : 8 },
+      activationConstraint: { distance: disableDragDrop ? 999999 : 5 },
     }),
     useSensor(TouchSensor, {
       activationConstraint: {
-        delay: disableDragDrop ? 999999 : 250,
-        tolerance: 10,
+        delay: disableDragDrop ? 999999 : 200,
+        tolerance: 8,
       },
     }),
     useSensor(KeyboardSensor),
@@ -106,12 +106,12 @@ function KanbanBoard({ project, disableDragDrop = false }: KanbanBoardProps) {
     sideEffects: defaultDropAnimationSideEffects({
       styles: {
         active: {
-          opacity: "0.8",
+          opacity: "0",
         },
       },
     }),
-    duration: 300,
-    easing: "cubic-bezier(0.25, 0.46, 0.45, 0.94)",
+    duration: 180,
+    easing: "cubic-bezier(0.2, 0, 0, 1)",
   };
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -261,10 +261,8 @@ function KanbanBoard({ project, disableDragDrop = false }: KanbanBoardProps) {
       </div>
       <DragOverlay dropAnimation={dropAnimation}>
         {activeTask ? (
-          <div className="transform rotate-1 scale-[1.03] shadow-lg">
-            <div className="ring-2 ring-ring/35 rounded-lg">
-              <TaskCard task={activeTask} />
-            </div>
+          <div className="shadow-xl opacity-95 ring-1 ring-ring/30 rounded-lg">
+            <TaskCard task={activeTask} />
           </div>
         ) : null}
       </DragOverlay>
