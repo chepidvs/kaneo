@@ -211,7 +211,10 @@ export function NavProjects() {
     });
   };
 
-  const pinnedProjects = (projects ?? []).filter((p) => isPinned(p.id));
+  const sortedProjects = (projects ?? [])
+    .slice()
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const pinnedProjects = sortedProjects.filter((p) => isPinned(p.id));
 
   if (!workspace) return null;
 
@@ -266,7 +269,7 @@ export function NavProjects() {
           <CollapsiblePanel>
             <SidebarGroupContent>
               <SidebarMenu className="gap-0.5">
-                {projects?.map((project) => (
+                {sortedProjects.map((project) => (
                   <ProjectItem
                     key={project.id}
                     project={project}
