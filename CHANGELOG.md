@@ -1,4 +1,4 @@
-## v2.7.5 | FRMWRK
+## v2.7.5 | FRMWRK (2026-05-05)
 
 ### Added
 - Add label truncation fix in task detail sidebar — label badges now display up to 120px wide instead of being clipped at 60px.
@@ -6,7 +6,7 @@
 - Add clone task from context menu — right-click any task card to clone it; the cloned task opens immediately for editing. Labels and modules are copied.
 - Add saved filter views on board toolbar — save any active filter combination with a custom name, apply or delete saved views from a dropdown. Active view name shown on the button. Persisted per-project in localStorage.
 
-## v2.7.4 | FRMWRK
+## v2.7.4 | FRMWRK (2026-05-03)
 
 ### Added
 - Add Role & Permission System — configurable permissions per role (Admin, Member, Guest) with a new Guest role.
