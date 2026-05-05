@@ -5,6 +5,8 @@
 - Add smoother drag and drop on kanban board — original card fades out during drag, overlay shadow refined, activation thresholds tightened.
 - Add clone task from context menu — right-click any task card to clone it; the cloned task opens immediately for editing. Labels and modules are copied.
 - Add saved filter views on board toolbar — save any active filter combination with a custom name, apply or delete saved views from a dropdown. Active view name shown on the button. Persisted per-project in localStorage.
+- Add Favourites section to sidebar — pin any project to keep it accessible at the top; pinned projects are duplicated in Favourites (not moved). Empty state shown when no projects are pinned. Persisted per-workspace in localStorage.
+- Improve Add Project button in sidebar — now shows a + icon with medium-weight text for better visual contrast.
 
 ## v2.7.4 | FRMWRK (2026-05-03)
 
