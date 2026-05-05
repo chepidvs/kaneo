@@ -652,9 +652,11 @@ export default function BoardToolbar({
                   </span>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-56" align="start">
-                  <DropdownMenuLabel className="text-[11px] uppercase tracking-wide">
-                    {t("tasks:savedViews.title")}
-                  </DropdownMenuLabel>
+                  <DropdownMenuGroup>
+                    <DropdownMenuLabel className="text-[11px] uppercase tracking-wide">
+                      {t("tasks:savedViews.title")}
+                    </DropdownMenuLabel>
+                  </DropdownMenuGroup>
                   <DropdownMenuSeparator />
                   {savedViews.map((view) => (
                     <DropdownMenuItem
