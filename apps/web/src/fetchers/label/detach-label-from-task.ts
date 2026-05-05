@@ -2,12 +2,12 @@ import { client } from "@kaneo/libs";
 import type { InferRequestType } from "hono/client";
 
 export type DetachLabelFromTaskRequest = InferRequestType<
-  (typeof client)["label"][":id"]["task"]["$delete"]
+  (typeof client)["label"][":id"]["task"][":taskId"]["$delete"]
 >["param"];
 
-async function detachLabelFromTask({ id }: DetachLabelFromTaskRequest) {
-  const response = await client.label[":id"].task.$delete({
-    param: { id },
+async function detachLabelFromTask({ id, taskId }: DetachLabelFromTaskRequest) {
+  const response = await client.label[":id"].task[":taskId"].$delete({
+    param: { id, taskId },
   });
 
   if (!response.ok) {

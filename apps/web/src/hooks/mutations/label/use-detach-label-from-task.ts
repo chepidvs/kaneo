@@ -17,7 +17,8 @@ function useDetachLabelFromTask() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id }: DetachLabelVariables) => detachLabelFromTask({ id }),
+    mutationFn: ({ id, taskId }: DetachLabelVariables) =>
+      detachLabelFromTask({ id, taskId }),
 
     onMutate: async ({ id, taskId }) => {
       await queryClient.cancelQueries({

@@ -143,11 +143,11 @@ const label = new Hono<{
     },
   )
   .delete(
-    "/:id/task",
+    "/:id/task/:taskId",
     describeRoute({
       operationId: "detachLabelFromTask",
       tags: ["Labels"],
-      description: "Detach a label from its current task",
+      description: "Detach a label from a specific task",
       responses: {
         200: {
           description: "Label detached from task successfully",
@@ -157,12 +157,12 @@ const label = new Hono<{
         },
       },
     }),
-    validator("param", v.object({ id: v.string() })),
+    validator("param", v.object({ id: v.string(), taskId: v.string() })),
     workspaceAccess.fromLabel(),
     async (c) => {
-      const { id } = c.req.valid("param");
+      const { id, taskId } = c.req.valid("param");
       const userId = c.get("userId") as string;
-      const label = await unassignLabelFromTask(id, userId);
+      const label = await unassignLabelFromTask(id, taskId, userId);
       return c.json(label);
     },
   )

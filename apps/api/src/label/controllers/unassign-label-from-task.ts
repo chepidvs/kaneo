@@ -6,14 +6,19 @@ import { publishEvent } from "../../events";
 import { removeLabelFromGitea } from "../../plugins/gitea/utils/sync-label-to-gitea";
 import { removeLabelFromGitHub } from "../../plugins/github/utils/sync-label-to-github";
 
-async function unassignLabelFromTask(id: string, userId?: string) {
+async function unassignLabelFromTask(
+  id: string,
+  taskId: string,
+  userId?: string,
+) {
   const taskLabel = await db.query.taskLabelTable.findFirst({
-    where: (taskLabel, { eq }) => eq(taskLabel.labelId, id),
+    where: (taskLabel, { and, eq }) =>
+      and(eq(taskLabel.labelId, id), eq(taskLabel.taskId, taskId)),
   });
 
   if (!taskLabel) {
     throw new HTTPException(404, {
-      message: "Label is not attached to any task",
+      message: "Label is not attached to this task",
     });
   }
 
@@ -28,7 +33,7 @@ async function unassignLabelFromTask(id: string, userId?: string) {
   }
 
   const task = await db.query.taskTable.findFirst({
-    where: (task, { eq }) => eq(task.id, taskLabel.taskId),
+    where: (task, { eq }) => eq(task.id, taskId),
   });
 
   if (!task) {
@@ -40,10 +45,7 @@ async function unassignLabelFromTask(id: string, userId?: string) {
   await db
     .delete(taskLabelTable)
     .where(
-      and(
-        eq(taskLabelTable.taskId, taskLabel.taskId),
-        eq(taskLabelTable.labelId, id),
-      ),
+      and(eq(taskLabelTable.taskId, taskId), eq(taskLabelTable.labelId, id)),
     );
 
   removeLabelFromGitHub(taskLabel.taskId, label.name).catch((error) => {
