@@ -54,7 +54,6 @@ export const taskSchema = v.object({
   title: v.string(),
   description: v.nullable(v.string()),
   status: v.string(),
-  moduleId: v.nullable(v.string()),
   priority: v.picklist([
     "no-priority",
     "low",

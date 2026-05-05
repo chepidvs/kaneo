@@ -113,7 +113,7 @@ export default function TaskPropertiesSidebar({
   const assignee = workspaceUsers?.members?.find(
     (member) => member.userId === task?.userId,
   );
-  const taskModule = modules.find((module) => module.id === task?.moduleId);
+  const taskModules = task?.modules ?? [];
 
   const handleCopyTaskLink = () => {
     navigator.clipboard.writeText(
@@ -326,10 +326,12 @@ export default function TaskPropertiesSidebar({
                     <span
                       className={cn(
                         "text-xs font-semibold truncate max-w-[120px]",
-                        !taskModule && "text-muted-foreground",
+                        taskModules.length === 0 && "text-muted-foreground",
                       )}
                     >
-                      {taskModule?.name ?? "No module"}
+                      {taskModules.length > 0
+                        ? taskModules.map((m) => m.name).join(", ")
+                        : "No module"}
                     </span>
                   </Button>
                 </TaskModulePopover>

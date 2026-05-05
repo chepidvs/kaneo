@@ -1,12 +1,7 @@
 import { and, eq, max } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import {
-  columnTable,
-  moduleTable,
-  taskTable,
-  userTable,
-} from "../../database/schema";
+import { columnTable, taskTable, userTable } from "../../database/schema";
 import { publishEvent } from "../../events";
 import { assertValidTaskStatus } from "../validate-task-fields";
 import getNextTaskNumber from "./get-next-task-number";
@@ -20,7 +15,6 @@ async function createTask({
   dueDate,
   description,
   priority,
-  moduleId,
 }: {
   projectId: string;
   userId?: string;
@@ -30,7 +24,6 @@ async function createTask({
   dueDate?: Date;
   description?: string;
   priority?: string;
-  moduleId?: string | null;
 }) {
   const resolvedStatus = status || "to-do";
   const resolvedPriority = priority || "no-priority";
@@ -50,19 +43,6 @@ async function createTask({
       eq(columnTable.slug, resolvedStatus),
     ),
   });
-
-  if (moduleId) {
-    const moduleData = await db.query.moduleTable.findFirst({
-      where: and(
-        eq(moduleTable.id, moduleId),
-        eq(moduleTable.projectId, projectId),
-      ),
-    });
-
-    if (!moduleData) {
-      throw new HTTPException(404, { message: "Module not found" });
-    }
-  }
 
   const [maxPositionResult] = await db
     .select({ maxPosition: max(taskTable.position) })
@@ -90,7 +70,6 @@ async function createTask({
       dueDate: dueDate || null,
       description: description || "",
       priority: resolvedPriority,
-      moduleId: moduleId || null,
       number: nextTaskNumber + 1,
       position: nextPosition,
     })

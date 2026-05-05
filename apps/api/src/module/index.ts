@@ -4,10 +4,12 @@ import { describeRoute, resolver, validator } from "hono-openapi";
 import * as v from "valibot";
 import { moduleSchema } from "../schemas";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
+import assignModuleToTask from "./controllers/assign-module-to-task";
 import createModule from "./controllers/create-module";
 import deleteModule from "./controllers/delete-module";
 import getModule from "./controllers/get-module";
 import getModules from "./controllers/get-modules";
+import unassignModuleFromTask from "./controllers/unassign-module-from-task";
 import updateModule from "./controllers/update-module";
 
 function parseModuleDate(value?: string | null) {
@@ -183,6 +185,42 @@ const module = new Hono<{
       const { id } = c.req.valid("param");
       const deletedModule = await deleteModule(id);
       return c.json(deletedModule);
+    },
+  )
+  .put(
+    "/:id/task",
+    describeRoute({
+      operationId: "assignModuleToTask",
+      tags: ["Modules"],
+      description: "Assign a module to a task",
+      responses: { 200: { description: "Module assigned to task" } },
+    }),
+    validator("param", v.object({ id: v.string() })),
+    validator("json", v.object({ taskId: v.string() })),
+    workspaceAccess.fromModule(),
+    async (c) => {
+      const { id } = c.req.valid("param");
+      const { taskId } = c.req.valid("json");
+      const result = await assignModuleToTask(id, taskId);
+      return c.json(result);
+    },
+  )
+  .delete(
+    "/:id/task",
+    describeRoute({
+      operationId: "unassignModuleFromTask",
+      tags: ["Modules"],
+      description: "Remove a module from a task",
+      responses: { 200: { description: "Module removed from task" } },
+    }),
+    validator("param", v.object({ id: v.string() })),
+    validator("json", v.object({ taskId: v.string() })),
+    workspaceAccess.fromModule(),
+    async (c) => {
+      const { id } = c.req.valid("param");
+      const { taskId } = c.req.valid("json");
+      const result = await unassignModuleFromTask(id, taskId);
+      return c.json(result);
     },
   );
 

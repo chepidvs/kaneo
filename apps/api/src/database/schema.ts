@@ -423,10 +423,6 @@ export const taskTable = pgTable(
       onDelete: "set null",
       onUpdate: "cascade",
     }),
-    moduleId: text("module_id").references(() => moduleTable.id, {
-      onDelete: "set null",
-      onUpdate: "cascade",
-    }),
     priority: text("priority").default("low"),
     startDate: timestamp("start_date", { mode: "date" }),
     dueDate: timestamp("due_date", { mode: "date" }),
@@ -438,7 +434,6 @@ export const taskTable = pgTable(
   },
   (table) => [
     index("task_projectId_idx").on(table.projectId),
-    index("task_moduleId_idx").on(table.moduleId),
     index("task_dueDate_idx").on(table.dueDate),
     unique("task_project_number_unique").on(table.projectId, table.number),
   ],
@@ -628,6 +623,36 @@ export const taskLabelTable = pgTable(
     index("task_label_task_id_idx").on(table.taskId),
     index("task_label_label_id_idx").on(table.labelId),
     uniqueIndex("task_label_task_label_unique").on(table.taskId, table.labelId),
+  ],
+);
+
+export const taskModuleTable = pgTable(
+  "task_module",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    taskId: text("task_id")
+      .notNull()
+      .references(() => taskTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    moduleId: text("module_id")
+      .notNull()
+      .references(() => moduleTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("task_module_taskId_idx").on(table.taskId),
+    index("task_module_moduleId_idx").on(table.moduleId),
+    uniqueIndex("task_module_task_module_unique").on(
+      table.taskId,
+      table.moduleId,
+    ),
   ],
 );
 

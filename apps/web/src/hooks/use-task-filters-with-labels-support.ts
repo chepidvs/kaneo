@@ -117,7 +117,9 @@ export function useTaskFiltersWithLabelsSupport(
         if (
           filters.modules &&
           filters.modules.length > 0 &&
-          !filters.modules.includes(task.moduleId ?? "")
+          !filters.modules.some((moduleId) =>
+            (task.modules ?? []).some((m) => m.id === moduleId),
+          )
         ) {
           return false;
         }

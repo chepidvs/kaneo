@@ -3,6 +3,7 @@ import {
   asc,
   desc,
   eq,
+  exists,
   gte,
   inArray,
   lte,
@@ -15,8 +16,10 @@ import {
   columnTable,
   externalLinkTable,
   labelTable,
+  moduleTable,
   projectTable,
   taskLabelTable,
+  taskModuleTable,
   taskTable,
   userTable,
 } from "../../database/schema";
@@ -96,7 +99,19 @@ async function getTasks(projectId: string, options: GetTasksOptions = {}) {
   }
 
   if (options.moduleId) {
-    conditions.push(eq(taskTable.moduleId, options.moduleId));
+    conditions.push(
+      exists(
+        db
+          .select({ one: sql`1` })
+          .from(taskModuleTable)
+          .where(
+            and(
+              eq(taskModuleTable.taskId, taskTable.id),
+              eq(taskModuleTable.moduleId, options.moduleId),
+            ),
+          ),
+      ),
+    );
   }
 
   if (options.dueBefore) {
@@ -142,7 +157,6 @@ async function getTasks(projectId: string, options: GetTasksOptions = {}) {
     assigneeId: userTable.id,
     assigneeImage: userTable.image,
     projectId: taskTable.projectId,
-    moduleId: taskTable.moduleId,
   };
 
   const query = db
@@ -181,6 +195,19 @@ async function getTasks(projectId: string, options: GetTasksOptions = {}) {
           .where(inArray(externalLinkTable.taskId, taskIds))
       : [];
 
+  const modulesData =
+    taskIds.length > 0
+      ? await db
+          .select({
+            taskId: taskModuleTable.taskId,
+            id: moduleTable.id,
+            name: moduleTable.name,
+          })
+          .from(taskModuleTable)
+          .innerJoin(moduleTable, eq(taskModuleTable.moduleId, moduleTable.id))
+          .where(inArray(taskModuleTable.taskId, taskIds))
+      : [];
+
   const taskLabelsMap = new Map<
     string,
     Array<{ id: string; name: string; color: string }>
@@ -196,6 +223,16 @@ async function getTasks(projectId: string, options: GetTasksOptions = {}) {
       name: label.name,
       color: label.color,
     });
+  }
+
+  const taskModulesMap = new Map<string, Array<{ id: string; name: string }>>();
+
+  for (const mod of modulesData) {
+    if (!taskModulesMap.has(mod.taskId)) {
+      taskModulesMap.set(mod.taskId, []);
+    }
+
+    taskModulesMap.get(mod.taskId)?.push({ id: mod.id, name: mod.name });
   }
 
   const taskExternalLinksMap = new Map<
@@ -241,6 +278,7 @@ async function getTasks(projectId: string, options: GetTasksOptions = {}) {
         ...task,
         labels: taskLabelsMap.get(task.id) || [],
         externalLinks: taskExternalLinksMap.get(task.id) || [],
+        modules: taskModulesMap.get(task.id) || [],
       })),
   }));
 
@@ -250,6 +288,7 @@ async function getTasks(projectId: string, options: GetTasksOptions = {}) {
       ...task,
       labels: taskLabelsMap.get(task.id) || [],
       externalLinks: taskExternalLinksMap.get(task.id) || [],
+      modules: taskModulesMap.get(task.id) || [],
     }));
 
   const plannedTasks = paginatedTasks
@@ -258,6 +297,7 @@ async function getTasks(projectId: string, options: GetTasksOptions = {}) {
       ...task,
       labels: taskLabelsMap.get(task.id) || [],
       externalLinks: taskExternalLinksMap.get(task.id) || [],
+      modules: taskModulesMap.get(task.id) || [],
     }));
 
   return {

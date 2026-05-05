@@ -18,6 +18,7 @@ import {
   projectTable,
   sessionTable,
   taskLabelTable,
+  taskModuleTable,
   taskRelationTable,
   taskReminderSentTable,
   taskTable,
@@ -125,8 +126,22 @@ export const moduleTableRelations = relations(moduleTable, ({ one, many }) => ({
     fields: [moduleTable.projectId],
     references: [projectTable.id],
   }),
-  tasks: many(taskTable),
+  taskModules: many(taskModuleTable),
 }));
+
+export const taskModuleTableRelations = relations(
+  taskModuleTable,
+  ({ one }) => ({
+    task: one(taskTable, {
+      fields: [taskModuleTable.taskId],
+      references: [taskTable.id],
+    }),
+    module: one(moduleTable, {
+      fields: [taskModuleTable.moduleId],
+      references: [moduleTable.id],
+    }),
+  }),
+);
 
 export const pageTableRelations = relations(pageTable, ({ one }) => ({
   project: one(projectTable, {
@@ -193,15 +208,12 @@ export const taskTableRelations = relations(taskTable, ({ one, many }) => ({
     fields: [taskTable.columnId],
     references: [columnTable.id],
   }),
-  module: one(moduleTable, {
-    fields: [taskTable.moduleId],
-    references: [moduleTable.id],
-  }),
   timeEntries: many(timeEntryTable),
   activities: many(activityTable),
   comments: many(commentTable),
   assets: many(assetTable),
   taskLabels: many(taskLabelTable),
+  taskModules: many(taskModuleTable),
   externalLinks: many(externalLinkTable),
   sourceRelations: many(taskRelationTable, { relationName: "sourceTask" }),
   targetRelations: many(taskRelationTable, { relationName: "targetTask" }),

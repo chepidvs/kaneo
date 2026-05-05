@@ -4,6 +4,11 @@ type TaskLabel = {
   color: string;
 };
 
+type TaskModule = {
+  id: string;
+  name: string;
+};
+
 type TaskExternalLink = {
   id: string;
   taskId: string;
@@ -33,7 +38,7 @@ type Task = {
   assigneeImage?: string | null;
   projectId: string;
   columnId?: string | null;
-  moduleId?: string | null;
+  modules?: TaskModule[];
   labels?: TaskLabel[];
   externalLinks?: TaskExternalLink[];
 };

@@ -232,6 +232,13 @@
 			"when": 1777905315395,
 			"tag": "0032_moaning_leopardon",
 			"breakpoints": true
+		},
+		{
+			"idx": 33,
+			"version": "7",
+			"when": 1777907786508,
+			"tag": "0033_cynical_giant_man",
+			"breakpoints": true
 		}
 	]
 }
