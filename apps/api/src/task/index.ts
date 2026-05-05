@@ -203,6 +203,7 @@ const task = new Hono<{
       const task = await createTask({
         projectId,
         userId,
+        createdBy: c.get("userId") || undefined,
         title,
         description,
         startDate: startDate ? new Date(startDate) : undefined,

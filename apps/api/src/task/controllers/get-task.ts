@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { aliasedTable, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import {
@@ -7,6 +7,8 @@ import {
   taskTable,
   userTable,
 } from "../../database/schema";
+
+const creatorTable = aliasedTable(userTable, "creator");
 
 async function getTask(taskId: string) {
   const task = await db
@@ -21,13 +23,16 @@ async function getTask(taskId: string) {
       dueDate: taskTable.dueDate,
       position: taskTable.position,
       createdAt: taskTable.createdAt,
+      updatedAt: taskTable.updatedAt,
       userId: taskTable.userId,
       assigneeName: userTable.name,
       assigneeId: userTable.id,
       projectId: taskTable.projectId,
+      createdByName: creatorTable.name,
     })
     .from(taskTable)
     .leftJoin(userTable, eq(taskTable.userId, userTable.id))
+    .leftJoin(creatorTable, eq(taskTable.createdBy, creatorTable.id))
     .where(eq(taskTable.id, taskId))
     .limit(1);
 

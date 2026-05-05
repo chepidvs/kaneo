@@ -7,6 +7,7 @@ import {
   GitBranch,
   Plus,
   Shapes,
+  UserCircle,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -24,7 +25,6 @@ import { useGetColumns } from "@/hooks/queries/column/use-get-columns";
 import useGetGiteaIntegration from "@/hooks/queries/gitea-integration/use-get-gitea-integration";
 import useGetGithubIntegration from "@/hooks/queries/github-integration/use-get-github-integration";
 import useGetLabelsByTask from "@/hooks/queries/label/use-get-labels-by-task";
-import { useGetModules } from "@/hooks/queries/module/use-get-modules";
 import useGetProject from "@/hooks/queries/project/use-get-project";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import useGetTask from "@/hooks/queries/task/use-get-task";
@@ -88,7 +88,6 @@ export default function TaskPropertiesSidebar({
   const { data: columns = [] } = useGetColumns(projectId);
   const { data: workspaceUsers } = useGetActiveWorkspaceUsers(workspaceId);
   const { data: taskLabels = [] } = useGetLabelsByTask(taskId ?? "");
-  const { data: modules = [] } = useGetModules(projectId);
   const { data: githubIntegration } = useGetGithubIntegration(projectId);
   const { data: giteaIntegration } = useGetGiteaIntegration(projectId);
   const { data: workspaceProjects = [] } = useGetProjects({ workspaceId });
@@ -532,10 +531,12 @@ export default function TaskPropertiesSidebar({
                       <span
                         className={cn(
                           "text-xs font-semibold truncate max-w-[120px]",
-                          !taskModule && "text-muted-foreground",
+                          taskModules.length === 0 && "text-muted-foreground",
                         )}
                       >
-                        {taskModule?.name ?? "No module"}
+                        {taskModules.length > 0
+                          ? taskModules.map((m) => m.name).join(", ")
+                          : "No module"}
                       </span>
                     </Button>
                   </TaskModulePopover>
@@ -738,10 +739,12 @@ export default function TaskPropertiesSidebar({
                       <span
                         className={cn(
                           "text-xs font-semibold truncate",
-                          !taskModule && "text-muted-foreground",
+                          taskModules.length === 0 && "text-muted-foreground",
                         )}
                       >
-                        {taskModule?.name ?? "No module"}
+                        {taskModules.length > 0
+                          ? taskModules.map((m) => m.name).join(", ")
+                          : "No module"}
                       </span>
                     </Button>
                   </TaskModulePopover>
@@ -801,6 +804,42 @@ export default function TaskPropertiesSidebar({
             </div>
           </div>
         </div>
+
+        {task && (
+          <div className="hidden lg:flex px-5 pb-4 flex-col gap-1.5">
+            <div className="h-px bg-border mb-2" />
+            {task.createdByName && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <UserCircle className="w-3.5 h-3.5 shrink-0" />
+                <span>Created by {task.createdByName}</span>
+              </div>
+            )}
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <CalendarDays className="w-3.5 h-3.5 shrink-0" />
+              <span>
+                Created on{" "}
+                {new Date(task.createdAt).toLocaleDateString(undefined, {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                })}
+              </span>
+            </div>
+            {task.updatedAt && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <CalendarClock className="w-3.5 h-3.5 shrink-0" />
+                <span>
+                  Updated on{" "}
+                  {new Date(task.updatedAt).toLocaleDateString(undefined, {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

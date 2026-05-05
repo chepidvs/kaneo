@@ -8,6 +8,6 @@ export function useRolePermissions() {
   return useQuery({
     queryKey: ["role-permissions", workspace?.id],
     enabled: !!workspace?.id,
-    queryFn: () => getRolePermissions(workspace!.id),
+    queryFn: () => getRolePermissions(workspace?.id ?? ""),
   });
 }

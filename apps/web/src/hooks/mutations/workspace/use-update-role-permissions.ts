@@ -14,7 +14,7 @@ function useUpdateRolePermissions() {
     }: {
       role: string;
       permissions: RolePermissions;
-    }) => updateRolePermissions(workspace!.id, role, permissions),
+    }) => updateRolePermissions(workspace?.id ?? "", role, permissions),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ["role-permissions", workspace?.id],
