@@ -7,6 +7,7 @@ import {
   InfoIcon,
   LoaderCircleIcon,
   TriangleAlertIcon,
+  X,
 } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
@@ -150,14 +151,22 @@ function Toasts({ position = "top-right" }: { position: ToastPosition }) {
                     />
                   </div>
                 </div>
-                {toast.actionProps && (
-                  <Toast.Action
-                    className={buttonVariants({ size: "xs" })}
-                    data-slot="toast-action"
+                <div className="flex shrink-0 items-center gap-1.5">
+                  {toast.actionProps && (
+                    <Toast.Action
+                      className={buttonVariants({ size: "xs" })}
+                      data-slot="toast-action"
+                    >
+                      {toast.actionProps.children}
+                    </Toast.Action>
+                  )}
+                  <Toast.Close
+                    className="inline-flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+                    data-slot="toast-close"
                   >
-                    {toast.actionProps.children}
-                  </Toast.Action>
-                )}
+                    <X className="h-3.5 w-3.5" />
+                  </Toast.Close>
+                </div>
               </Toast.Content>
             </Toast.Root>
           );
