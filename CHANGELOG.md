@@ -1,3 +1,13 @@
+## v2.7.4 | FRMWRK
+
+### Added
+- Add Role & Permission System — configurable permissions per role (Admin, Member, Guest) with a new Guest role.
+- Add Multi-Module per Task — tasks can be assigned to more than one module, with a checkbox-style UI similar to labels.
+- Add Task Metadata — display Created by (username), Created on, and Updated on in the task detail sidebar.
+
+### Fixed
+- Fix label removal incorrectly targeting the wrong task when the same label was assigned to multiple tasks.
+
 ## v2.7.3 | FRMWRK
 
 ### Added
