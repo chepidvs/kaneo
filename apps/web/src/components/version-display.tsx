@@ -10,7 +10,7 @@ export function VersionDisplay() {
         rel="noopener noreferrer"
         className="text-xs text-muted-foreground hover:text-foreground transition-colors duration-200"
       >
-        v2.7.4 | FRMWRK
+        v2.7.5 | FRMWRK
       </a>
     </div>
   );
