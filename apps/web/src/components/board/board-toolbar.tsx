@@ -604,7 +604,7 @@ export default function BoardToolbar({
                         >
                           <CheckSlot checked={isModuleSelected(module.id)} />
                           <Shapes className="size-4 text-muted-foreground" />
-                          <span className="max-w-28 truncate">
+                          <span className="flex-1 min-w-0 truncate">
                             {module.name}
                           </span>
                         </DropdownMenuItem>
