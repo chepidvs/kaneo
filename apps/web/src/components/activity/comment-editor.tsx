@@ -1309,6 +1309,11 @@ export default function CommentEditor({
     });
   }, [disabled, editor, onChange, readOnly, value]);
 
+  useEffect(() => {
+    if (!editor) return;
+    editor.setEditable(!readOnly && !disabled);
+  }, [disabled, editor, readOnly]);
+
   const setLink = useCallback(() => {
     if (readOnly || disabled || !editor) return;
     const previousUrl = editor.getAttributes("link").href as string | undefined;
