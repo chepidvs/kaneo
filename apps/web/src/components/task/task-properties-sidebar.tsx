@@ -115,9 +115,7 @@ export default function TaskPropertiesSidebar({
   const taskModules = task?.modules ?? [];
 
   const handleCopyTaskLink = () => {
-    navigator.clipboard.writeText(
-      `${window.location.origin}/workspace/${workspaceId}/project/${projectId}/task/${taskId}`,
-    );
+    navigator.clipboard.writeText(window.location.href);
     toast.message(t("tasks:properties.copyTaskLink"));
   };
 
