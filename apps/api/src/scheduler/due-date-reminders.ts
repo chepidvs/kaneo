@@ -2,6 +2,7 @@ import { and, between, eq, isNotNull, isNull, or } from "drizzle-orm";
 import db from "../database";
 import {
   columnTable,
+  projectMemberTable,
   taskReminderSentTable,
   taskTable,
 } from "../database/schema";
@@ -85,6 +86,19 @@ async function processReminder(
   notificationType: "due_date_reminder" | "task_overdue",
 ) {
   if (!task.userId) return;
+
+  const [projectMember] = await db
+    .select({ userId: projectMemberTable.userId })
+    .from(projectMemberTable)
+    .where(
+      and(
+        eq(projectMemberTable.projectId, task.projectId),
+        eq(projectMemberTable.userId, task.userId),
+      ),
+    )
+    .limit(1);
+
+  if (!projectMember) return;
 
   // Insert sent record first — if it already exists, skip notification
   try {

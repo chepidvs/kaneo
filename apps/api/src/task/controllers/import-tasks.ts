@@ -20,7 +20,11 @@ type ImportTask = {
   userId?: string | null;
 };
 
-async function importTasks(projectId: string, tasksToImport: ImportTask[]) {
+async function importTasks(
+  projectId: string,
+  tasksToImport: ImportTask[],
+  createdBy?: string,
+) {
   const project = await db.query.projectTable.findFirst({
     where: eq(projectTable.id, projectId),
   });
@@ -74,7 +78,9 @@ async function importTasks(projectId: string, tasksToImport: ImportTask[]) {
       if (createdTask) {
         await publishEvent("task.created", {
           taskId: createdTask.id,
-          userId: createdTask.userId ?? "",
+          projectId,
+          title: createdTask.title,
+          userId: createdBy ?? "",
           type: "create",
           content: "imported the task",
         });

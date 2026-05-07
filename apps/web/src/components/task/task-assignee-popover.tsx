@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/popover";
 import { ShortcutNumber } from "@/components/ui/shortcut-number";
 import { useUpdateTaskAssignee } from "@/hooks/mutations/task/use-update-task-assignee";
-import { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
+import useGetProjectMembers from "@/hooks/queries/project/use-get-project-members";
 import { useNumberedShortcuts } from "@/hooks/use-numbered-shortcuts";
 import { toast } from "@/lib/toast";
 import type Task from "@/types/task";
@@ -20,13 +20,11 @@ const VISIBLE_USERS_STEP = 40;
 
 type TaskAssigneePopoverProps = {
   task: Task;
-  workspaceId: string;
   children: React.ReactNode;
 };
 
 export default function TaskAssigneePopover({
   task,
-  workspaceId,
   children,
 }: TaskAssigneePopoverProps) {
   const { t } = useTranslation();
@@ -35,16 +33,16 @@ export default function TaskAssigneePopover({
     INITIAL_VISIBLE_USERS,
   );
   const { mutateAsync: updateTaskAssignee } = useUpdateTaskAssignee();
-  const { data: workspaceUsers } = useGetActiveWorkspaceUsers(workspaceId);
+  const { data: projectMembers = [] } = useGetProjectMembers(task.projectId);
 
   const usersOptions = useMemo(() => {
-    return workspaceUsers?.members?.map((member) => ({
-      label: member?.user?.name ?? member.userId,
-      value: member.userId,
-      image: member?.user?.image ?? "",
-      name: member?.user?.name ?? "",
+    return projectMembers.map((member) => ({
+      label: member.name ?? member.id,
+      value: member.id,
+      image: member.image ?? "",
+      name: member.name ?? "",
     }));
-  }, [workspaceUsers]);
+  }, [projectMembers]);
 
   const handleAssigneeChange = useCallback(
     async (newUserId: string) => {

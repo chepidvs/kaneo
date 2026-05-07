@@ -87,7 +87,7 @@ async function createTask({
   await publishEvent("task.created", {
     ...createdTask,
     taskId: createdTask.id,
-    userId: createdTask.userId ?? "",
+    userId: createdBy ?? "",
     type: "task",
     content: null,
   });

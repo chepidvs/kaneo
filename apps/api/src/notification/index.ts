@@ -1,12 +1,12 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { describeRoute, resolver, validator } from "hono-openapi";
 import * as v from "valibot";
 import db from "../database";
 import {
+  projectMemberTable,
   projectTable,
   userTable,
-  workspaceUserTable,
 } from "../database/schema";
 import { subscribeToEvent } from "../events";
 import { notificationSchema } from "../schemas";
@@ -34,6 +34,21 @@ function isUserMentioned(comment: string, name: string | null) {
   );
 
   return mentionPattern.test(comment.toLowerCase());
+}
+
+async function isProjectMember(userId: string, projectId: string) {
+  const [member] = await db
+    .select({ userId: projectMemberTable.userId })
+    .from(projectMemberTable)
+    .where(
+      and(
+        eq(projectMemberTable.projectId, projectId),
+        eq(projectMemberTable.userId, userId),
+      ),
+    )
+    .limit(1);
+
+  return Boolean(member);
 }
 
 const bulkResultSchema = v.object({
@@ -203,9 +218,9 @@ subscribeToEvent<{
   }
 
   const members = await db
-    .select({ userId: workspaceUserTable.userId })
-    .from(workspaceUserTable)
-    .where(eq(workspaceUserTable.workspaceId, project.workspaceId));
+    .select({ userId: projectMemberTable.userId })
+    .from(projectMemberTable)
+    .where(eq(projectMemberTable.projectId, data.projectId));
 
   await Promise.all(
     members
@@ -247,12 +262,12 @@ subscribeToEvent<{
 
   const members = await db
     .select({
-      userId: workspaceUserTable.userId,
+      userId: projectMemberTable.userId,
       userName: userTable.name,
     })
-    .from(workspaceUserTable)
-    .innerJoin(userTable, eq(workspaceUserTable.userId, userTable.id))
-    .where(eq(workspaceUserTable.workspaceId, project.workspaceId));
+    .from(projectMemberTable)
+    .innerJoin(userTable, eq(projectMemberTable.userId, userTable.id))
+    .where(eq(projectMemberTable.projectId, data.projectId));
 
   const mentionedUserIds = new Set([
     ...(data.mentions ?? []),
@@ -305,13 +320,18 @@ subscribeToEvent<{
 
 subscribeToEvent<{
   taskId: string;
+  projectId: string;
   userId: string;
   oldStatus: string;
   newStatus: string;
   title: string;
   assigneeId?: string;
 }>("task.status_changed", async (data) => {
-  if (data.assigneeId && data.assigneeId !== data.userId) {
+  if (
+    data.assigneeId &&
+    data.assigneeId !== data.userId &&
+    (await isProjectMember(data.assigneeId, data.projectId))
+  ) {
     await createNotification({
       userId: data.assigneeId,
       type: "task_status_changed",
@@ -336,7 +356,11 @@ subscribeToEvent<{
   newAssigneeId: string;
   title: string;
 }>("task.assignee_changed", async (data) => {
-  if (data.newAssigneeId) {
+  if (
+    data.newAssigneeId &&
+    data.newAssigneeId !== data.userId &&
+    (await isProjectMember(data.newAssigneeId, data.projectId))
+  ) {
     await createNotification({
       userId: data.newAssigneeId,
       type: "task_assignee_changed",
@@ -355,11 +379,16 @@ subscribeToEvent<{
 subscribeToEvent<{
   timeEntryId: string;
   taskId: string;
+  projectId: string;
   userId: string;
   taskOwnerId?: string;
   taskTitle?: string;
 }>("time-entry.created", async (data) => {
-  if (data.taskOwnerId && data.taskOwnerId !== data.userId) {
+  if (
+    data.taskOwnerId &&
+    data.taskOwnerId !== data.userId &&
+    (await isProjectMember(data.taskOwnerId, data.projectId))
+  ) {
     await createNotification({
       userId: data.taskOwnerId,
       type: "time_entry_created",
