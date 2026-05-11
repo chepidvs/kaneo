@@ -82,8 +82,11 @@ export function WorkspaceBackupRestoreSection() {
   const handleDownloadBackup = useCallback(async () => {
     if (!workspace?.id) return;
 
+    const loadingToast = toast.loading(
+      t("settings:workspaceGeneral.backupPreparing"),
+    );
+
     try {
-      toast.loading(t("settings:workspaceGeneral.backupPreparing"));
       const backup = await exportWorkspaceBackup(workspace.id);
       const blob = new Blob([JSON.stringify(backup, null, 2)], {
         type: "application/json",
@@ -100,10 +103,10 @@ export function WorkspaceBackupRestoreSection() {
 
       saveAs(blob, `kaneo-${slug}-backup-${exportDate}.json`);
 
-      toast.dismiss();
+      toast.dismiss(loadingToast);
       toast.success(t("settings:workspaceGeneral.backupSuccess"));
     } catch (error) {
-      toast.dismiss();
+      toast.dismiss(loadingToast);
       toast.error(
         error instanceof Error
           ? error.message
@@ -130,13 +133,16 @@ export function WorkspaceBackupRestoreSection() {
       if (!file) return;
 
       setRestoreFileName(file.name);
+      let loadingToast: string | undefined;
 
       try {
         const content = await file.text();
         const parsed = JSON.parse(content) as unknown;
         setRestoreBackupPayload(parsed);
 
-        toast.loading(t("settings:workspaceGeneral.restoreValidating"));
+        loadingToast = toast.loading(
+          t("settings:workspaceGeneral.restoreValidating"),
+        );
         const result = (await validateWorkspaceBackup(
           parsed,
         )) as WorkspaceBackupValidationResult;
@@ -146,12 +152,12 @@ export function WorkspaceBackupRestoreSection() {
           setRestoreWorkspaceName(
             `${result.sourceWorkspace.name} (${t("settings:workspaceGeneral.restoreWorkspaceSuffix")})`,
           );
-          toast.dismiss();
+          toast.dismiss(loadingToast);
           toast.success(
             t("settings:workspaceGeneral.restoreValidationSuccess"),
           );
         } else {
-          toast.dismiss();
+          toast.dismiss(loadingToast);
           toast.error(
             result.errors[0] ||
               t("settings:workspaceGeneral.restoreValidationError"),
@@ -160,7 +166,7 @@ export function WorkspaceBackupRestoreSection() {
       } catch (error) {
         setRestoreBackupPayload(null);
         setRestoreValidation(null);
-        toast.dismiss();
+        toast.dismiss(loadingToast);
         toast.error(
           error instanceof Error
             ? error.message
@@ -185,10 +191,11 @@ export function WorkspaceBackupRestoreSection() {
     }
 
     let createdWorkspaceId: string | null = null;
+    const loadingToast = toast.loading(
+      t("settings:workspaceGeneral.restorePreparing"),
+    );
 
     try {
-      toast.loading(t("settings:workspaceGeneral.restorePreparing"));
-
       const createdWorkspace = await createWorkspace({
         name: restoreWorkspaceName.trim(),
         description:
@@ -211,7 +218,7 @@ export function WorkspaceBackupRestoreSection() {
         organizationId: createdWorkspace.id,
       });
 
-      toast.dismiss();
+      toast.dismiss(loadingToast);
       toast.success(t("settings:workspaceGeneral.restoreSuccess"));
       resetRestoreState();
 
@@ -222,7 +229,7 @@ export function WorkspaceBackupRestoreSection() {
         },
       });
     } catch (error) {
-      toast.dismiss();
+      toast.dismiss(loadingToast);
       toast.error(
         error instanceof Error
           ? error.message
