@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
 import PageTitle from "@/components/page-title";
+import WorkspaceBackupRestoreSection from "@/components/settings/workspace-backup-restore-section";
 import {
   AlertDialog,
   AlertDialogClose,
@@ -338,6 +339,8 @@ function RouteComponent() {
             </Form>
           </div>
         </div>
+
+        <WorkspaceBackupRestoreSection />
 
         <div className="space-y-6">
           <div className="space-y-1">

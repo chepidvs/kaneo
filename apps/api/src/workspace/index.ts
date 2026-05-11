@@ -11,9 +11,12 @@ import {
   isWorkspaceOwner,
 } from "../utils/permissions/project-access";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
+import exportWorkspaceBackup from "./controllers/export-workspace-backup";
 import { getRolePermissions } from "./controllers/get-role-permissions";
 import getWorkspaceMembersCtrl from "./controllers/get-workspace-members";
+import restoreWorkspaceBackup from "./controllers/restore-workspace-backup";
 import { updateRolePermissions } from "./controllers/update-role-permissions";
+import validateWorkspaceBackup from "./controllers/validate-workspace-backup";
 
 const workspace = new Hono<{
   Variables: {
@@ -21,6 +24,105 @@ const workspace = new Hono<{
     workspaceId: string;
   };
 }>()
+  .get(
+    "/:workspaceId/backup",
+    describeRoute({
+      operationId: "exportWorkspaceBackup",
+      tags: ["Workspaces"],
+      description: "Export a workspace backup snapshot (owner only)",
+      responses: {
+        200: {
+          description: "Workspace backup snapshot",
+          content: {
+            "application/json": { schema: resolver(v.any()) },
+          },
+        },
+      },
+    }),
+    validator("param", v.object({ workspaceId: v.string() })),
+    workspaceAccess.fromParam("workspaceId"),
+    async (c) => {
+      const actorUserId = c.get("userId");
+      const workspaceId = c.get("workspaceId");
+      const actorRole = await getWorkspaceRole(actorUserId, workspaceId);
+
+      if (!isWorkspaceOwner(actorRole)) {
+        throw new HTTPException(403, {
+          message: "Only workspace owner can export backups",
+        });
+      }
+
+      const backup = await exportWorkspaceBackup(workspaceId);
+      return c.json(backup);
+    },
+  )
+  .post(
+    "/backup/validate",
+    describeRoute({
+      operationId: "validateWorkspaceBackup",
+      tags: ["Workspaces"],
+      description: "Validate a workspace backup file before restore",
+      responses: {
+        200: {
+          description: "Backup validation result",
+          content: {
+            "application/json": { schema: resolver(v.any()) },
+          },
+        },
+      },
+    }),
+    validator("json", v.any()),
+    async (c) => {
+      const actorUserId = c.get("userId");
+
+      if (!actorUserId) {
+        throw new HTTPException(401, { message: "Unauthorized" });
+      }
+
+      const payload = c.req.valid("json");
+      const result = await validateWorkspaceBackup(payload);
+      return c.json(result);
+    },
+  )
+  .post(
+    "/:workspaceId/restore",
+    describeRoute({
+      operationId: "restoreWorkspaceBackup",
+      tags: ["Workspaces"],
+      description:
+        "Restore a workspace backup into an empty workspace (owner only)",
+      responses: {
+        200: {
+          description: "Workspace backup restored",
+          content: {
+            "application/json": { schema: resolver(v.any()) },
+          },
+        },
+      },
+    }),
+    validator("param", v.object({ workspaceId: v.string() })),
+    validator("json", v.any()),
+    workspaceAccess.fromParam("workspaceId"),
+    async (c) => {
+      const actorUserId = c.get("userId");
+      const workspaceId = c.get("workspaceId");
+      const actorRole = await getWorkspaceRole(actorUserId, workspaceId);
+
+      if (!isWorkspaceOwner(actorRole)) {
+        throw new HTTPException(403, {
+          message: "Only workspace owner can restore backups",
+        });
+      }
+
+      const payload = c.req.valid("json");
+      const result = await restoreWorkspaceBackup(
+        workspaceId,
+        actorUserId,
+        payload,
+      );
+      return c.json(result);
+    },
+  )
   .get(
     "/:workspaceId/members",
     describeRoute({
