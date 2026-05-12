@@ -13,14 +13,14 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import useCreateComment from "@/hooks/mutations/comment/use-create-comment";
-import useGetWorkspaceUsers from "@/hooks/queries/workspace-users/use-get-workspace-users";
+import useGetProjectMembers from "@/hooks/queries/project/use-get-project-members";
 import { getModifierKeyText } from "@/hooks/use-keyboard-shortcuts";
 import { cn } from "@/lib/cn";
 import { toast } from "@/lib/toast";
 
 type CommentInputProps = {
   taskId: string;
-  workspaceId: string;
+  projectId: string;
 };
 
 type WorkspaceMember = {
@@ -40,10 +40,7 @@ function normalizeMentionName(value: string) {
   return value.trim().replace(/^@/, "").toLowerCase();
 }
 
-export default function CommentInput({
-  taskId,
-  workspaceId,
-}: CommentInputProps) {
+export default function CommentInput({ taskId, projectId }: CommentInputProps) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { user: currentUser } = useAuth();
@@ -52,19 +49,19 @@ export default function CommentInput({
   const [attachAction, setAttachAction] = useState<(() => void) | null>(null);
 
   const { mutateAsync: createComment, isPending } = useCreateComment();
-  const { data: workspaceUsers } = useGetWorkspaceUsers({ workspaceId });
+  const { data: projectMembers } = useGetProjectMembers(projectId);
 
   const mentionableMembers = useMemo<WorkspaceMember[]>(() => {
-    if (!Array.isArray(workspaceUsers)) return [];
+    if (!Array.isArray(projectMembers)) return [];
 
-    return workspaceUsers.filter(
+    return projectMembers.filter(
       (member): member is WorkspaceMember =>
         typeof member === "object" &&
         member !== null &&
         "id" in member &&
         typeof (member as WorkspaceMember).id === "string",
     );
-  }, [workspaceUsers]);
+  }, [projectMembers]);
 
   const mentionedUserIds = useMemo<string[]>(() => {
     if (!content.trim() || mentionableMembers.length === 0) return [];
