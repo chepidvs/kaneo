@@ -17,9 +17,6 @@ type SubtaskRowProps = {
   isSelected: boolean;
   isFocused: boolean;
   selectionRadius: string;
-  assignee: {
-    user?: { image?: string | null; name?: string | null } | null;
-  } | null;
   onToggleSelection: () => void;
   onNavigate: () => void;
   onDeleteClick: () => void;
@@ -33,12 +30,12 @@ export default function SubtaskRow({
   isSelected,
   isFocused,
   selectionRadius,
-  assignee,
   onToggleSelection,
   onNavigate,
   onDeleteClick,
 }: SubtaskRowProps) {
   const { t } = useTranslation();
+  const assignees = task.assignees ?? [];
 
   return (
     <motion.div
@@ -79,21 +76,32 @@ export default function SubtaskRow({
               </span>
             </button>
 
-            <SubtaskAssigneePopover tasks={tasks} workspaceId={workspaceId}>
+            <SubtaskAssigneePopover tasks={tasks}>
               <button
                 type="button"
                 className="shrink-0 flex items-center justify-center rounded p-0.5 transition-colors outline-none"
               >
-                {task.userId && assignee ? (
-                  <Avatar className="h-5 w-5">
-                    <AvatarImage
-                      src={assignee?.user?.image ?? ""}
-                      alt={assignee?.user?.name || ""}
-                    />
-                    <AvatarFallback className="text-[9px] font-medium border border-border/30">
-                      {assignee?.user?.name?.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
+                {assignees.length > 0 ? (
+                  <div className="flex -space-x-1">
+                    {assignees.slice(0, 2).map((a) => (
+                      <Avatar
+                        key={a.id}
+                        className="h-5 w-5 ring-1 ring-background"
+                      >
+                        <AvatarImage src={a.image ?? ""} alt={a.name || ""} />
+                        <AvatarFallback className="text-[9px] font-medium border border-border/30">
+                          {a.name?.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                    ))}
+                    {assignees.length > 2 && (
+                      <div className="flex h-5 w-5 items-center justify-center rounded-full border border-border bg-muted ring-1 ring-background">
+                        <span className="text-[8px] font-medium text-muted-foreground">
+                          +{assignees.length - 2}
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 ) : (
                   <div
                     className="flex h-5 w-5 items-center justify-center rounded-full border border-dashed border-border/70"

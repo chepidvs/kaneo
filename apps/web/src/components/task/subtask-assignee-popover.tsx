@@ -9,8 +9,8 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { ShortcutNumber } from "@/components/ui/shortcut-number";
-import { useUpdateTaskAssignee } from "@/hooks/mutations/task/use-update-task-assignee";
-import { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
+import { useUpdateTaskAssignees } from "@/hooks/mutations/task/use-update-task-assignees";
+import useGetProjectMembers from "@/hooks/queries/project/use-get-project-members";
 import { useNumberedShortcuts } from "@/hooks/use-numbered-shortcuts";
 import { toast } from "@/lib/toast";
 import type Task from "@/types/task";
@@ -20,13 +20,11 @@ const VISIBLE_USERS_STEP = 40;
 
 type SubtaskAssigneePopoverProps = {
   tasks: Task[];
-  workspaceId: string;
   children: React.ReactNode;
 };
 
 export default function SubtaskAssigneePopover({
   tasks,
-  workspaceId,
   children,
 }: SubtaskAssigneePopoverProps) {
   const { t } = useTranslation();
@@ -34,30 +32,48 @@ export default function SubtaskAssigneePopover({
   const [visibleUsersCount, setVisibleUsersCount] = useState(
     INITIAL_VISIBLE_USERS,
   );
-  const { mutateAsync: updateTaskAssignee } = useUpdateTaskAssignee();
-  const { data: workspaceUsers } = useGetActiveWorkspaceUsers(workspaceId);
+  const { mutateAsync: updateTaskAssignees } = useUpdateTaskAssignees();
+  const projectId = tasks[0]?.projectId ?? "";
+  const { data: projectMembers = [] } = useGetProjectMembers(projectId);
 
   const usersOptions = useMemo(() => {
-    return workspaceUsers?.members?.map((member) => ({
-      label: member?.user?.name ?? member.userId,
-      value: member.userId,
-      image: member?.user?.image ?? "",
-      name: member?.user?.name ?? "",
+    return projectMembers.map((member) => ({
+      label: member.name ?? member.id,
+      value: member.id,
+      image: member.image ?? "",
+      name: member.name ?? "",
     }));
-  }, [workspaceUsers]);
+  }, [projectMembers]);
 
-  const allSameAssignee =
-    tasks.length > 0 && tasks.every((t) => t.userId === tasks[0].userId);
-  const currentAssignee = allSameAssignee ? tasks[0].userId : null;
+  const allSameAssignees = useMemo(() => {
+    if (tasks.length === 0) return true;
+    const firstIds = (tasks[0].assignees ?? [])
+      .map((a) => a.id)
+      .sort()
+      .join(",");
+    return tasks.every(
+      (t) =>
+        (t.assignees ?? [])
+          .map((a) => a.id)
+          .sort()
+          .join(",") === firstIds,
+    );
+  }, [tasks]);
+
+  const currentAssigneeIds = useMemo(() => {
+    if (!allSameAssignees || tasks.length === 0) return new Set<string>();
+    return new Set((tasks[0].assignees ?? []).map((a) => a.id));
+  }, [allSameAssignees, tasks]);
 
   const handleAssigneeChange = useCallback(
     async (newUserId: string) => {
       try {
         await Promise.all(
           tasks.map((task) =>
-            updateTaskAssignee({
-              ...task,
-              userId: newUserId,
+            updateTaskAssignees({
+              taskId: task.id,
+              projectId: task.projectId,
+              userIds: newUserId ? [newUserId] : [],
             }),
           ),
         );
@@ -70,7 +86,7 @@ export default function SubtaskAssigneePopover({
         );
       }
     },
-    [t, tasks, updateTaskAssignee],
+    [t, tasks, updateTaskAssignees],
   );
 
   const shortcutOptions = useMemo(() => {
@@ -135,7 +151,7 @@ export default function SubtaskAssigneePopover({
             <span className="text-sm">
               {t("tasks:popover.assignee.unassigned")}
             </span>
-            {allSameAssignee && !currentAssignee ? (
+            {allSameAssignees && currentAssigneeIds.size === 0 ? (
               <Check className="ml-auto h-4 w-4" />
             ) : (
               <ShortcutNumber number={1} />
@@ -156,7 +172,9 @@ export default function SubtaskAssigneePopover({
                 </AvatarFallback>
               </Avatar>
               <span className="text-sm truncate">{user.label}</span>
-              {currentAssignee === user.value ? (
+              {allSameAssignees &&
+              currentAssigneeIds.size === 1 &&
+              currentAssigneeIds.has(user.value) ? (
                 <Check className="ml-auto h-4 w-4 shrink-0" />
               ) : index < 8 ? (
                 <ShortcutNumber number={index + 2} />

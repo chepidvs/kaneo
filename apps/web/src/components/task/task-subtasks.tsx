@@ -25,7 +25,6 @@ import { useDeleteTask } from "@/hooks/mutations/task/use-delete-task";
 import useCreateTaskRelation from "@/hooks/mutations/task-relation/use-create-task-relation";
 import useGetTaskRelations from "@/hooks/queries/task-relation/use-get-task-relations";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
-import { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
 import { toast } from "@/lib/toast";
 import queryClient from "@/query-client";
 import type Task from "@/types/task";
@@ -54,9 +53,6 @@ export default function TaskSubtasks({
 
   const { data: relations = [] } = useGetTaskRelations(taskId);
   const { data: workspace } = useActiveWorkspace();
-  const { data: workspaceUsers } = useGetActiveWorkspaceUsers(
-    workspace?.id ?? "",
-  );
   const createTask = useCreateTask();
   const createRelation = useCreateTaskRelation();
   const { mutateAsync: deleteTask } = useDeleteTask();
@@ -108,6 +104,7 @@ export default function TaskSubtasks({
     userId: subtask.task.userId,
     assigneeId: subtask.task.userId,
     assigneeName: subtask.task.assigneeName,
+    assignees: subtask.task.assignees ?? [],
     projectId: subtask.task.projectId,
   });
 
@@ -118,13 +115,6 @@ export default function TaskSubtasks({
         .map(buildTaskObject);
     }
     return [currentTask];
-  };
-
-  const getAssignee = (userId: string | null) => {
-    if (!userId || !workspaceUsers?.members) return null;
-    return (
-      workspaceUsers.members.find((member) => member.userId === userId) ?? null
-    );
   };
 
   const getSelectionRadius = (index: number, isSelected: boolean) => {
@@ -334,7 +324,6 @@ export default function TaskSubtasks({
                     isSelected={isSelected}
                     isFocused={focusedIndex === index}
                     selectionRadius={getSelectionRadius(index, isSelected)}
-                    assignee={getAssignee(subtask.task.userId)}
                     onToggleSelection={() => toggleSelection(subtask.task.id)}
                     onNavigate={() =>
                       navigate({

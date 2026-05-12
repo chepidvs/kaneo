@@ -43,8 +43,6 @@ import useDeleteTaskRelation from "@/hooks/mutations/task-relation/use-delete-ta
 import useGetProject from "@/hooks/queries/project/use-get-project";
 import { useGetTasks } from "@/hooks/queries/task/use-get-tasks";
 import useGetTaskRelations from "@/hooks/queries/task-relation/use-get-task-relations";
-import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
-import { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
 import { getColumnIcon } from "@/lib/column";
 import { toast } from "@/lib/toast";
 import type Task from "@/types/task";
@@ -87,10 +85,6 @@ export default function TaskRelations({
   const { data: relations = [] } = useGetTaskRelations(taskId);
   const { data: projectData } = useGetTasks(projectId);
   const { data: project } = useGetProject({ id: projectId, workspaceId });
-  const { data: workspace } = useActiveWorkspace();
-  const { data: workspaceUsers } = useGetActiveWorkspaceUsers(
-    workspace?.id ?? "",
-  );
   const createRelation = useCreateTaskRelation();
   const deleteRelation = useDeleteTaskRelation(taskId);
 
@@ -196,11 +190,6 @@ export default function TaskRelations({
     });
   };
 
-  const getAssignee = (userId: string | null) => {
-    if (!userId || !workspaceUsers?.members) return null;
-    return workspaceUsers.members.find((member) => member.userId === userId);
-  };
-
   const buildTaskObject = (item: {
     task: NonNullable<(typeof nonSubtaskRelations)[number]["sourceTask"]>;
   }): Task => ({
@@ -216,6 +205,7 @@ export default function TaskRelations({
     userId: item.task.userId,
     assigneeId: item.task.userId,
     assigneeName: item.task.assigneeName,
+    assignees: item.task.assignees ?? [],
     projectId: item.task.projectId,
   });
 
@@ -263,8 +253,8 @@ export default function TaskRelations({
               </span>
               <div className="flex flex-col mt-0.5">
                 {items.map((item) => {
-                  const assignee = getAssignee(item.task.userId);
                   const taskObj = buildTaskObject(item);
+                  const assignees = item.task.assignees ?? [];
 
                   return (
                     <ContextMenu key={item.id}>
@@ -294,26 +284,35 @@ export default function TaskRelations({
                             </span>
                           </button>
 
-                          <SubtaskAssigneePopover
-                            tasks={[taskObj]}
-                            workspaceId={workspaceId}
-                          >
+                          <SubtaskAssigneePopover tasks={[taskObj]}>
                             <button
                               type="button"
                               className="shrink-0 flex items-center justify-center rounded p-0.5 transition-colors outline-none"
                             >
-                              {item.task.userId && assignee ? (
-                                <Avatar className="h-5 w-5">
-                                  <AvatarImage
-                                    src={assignee?.user?.image ?? ""}
-                                    alt={assignee?.user?.name || ""}
-                                  />
-                                  <AvatarFallback className="text-[9px] font-medium border border-border/30">
-                                    {assignee?.user?.name
-                                      ?.charAt(0)
-                                      .toUpperCase()}
-                                  </AvatarFallback>
-                                </Avatar>
+                              {assignees.length > 0 ? (
+                                <div className="flex -space-x-1">
+                                  {assignees.slice(0, 2).map((a) => (
+                                    <Avatar
+                                      key={a.id}
+                                      className="h-5 w-5 ring-1 ring-background"
+                                    >
+                                      <AvatarImage
+                                        src={a.image ?? ""}
+                                        alt={a.name || ""}
+                                      />
+                                      <AvatarFallback className="text-[9px] font-medium border border-border/30">
+                                        {a.name?.charAt(0).toUpperCase()}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                  ))}
+                                  {assignees.length > 2 && (
+                                    <div className="flex h-5 w-5 items-center justify-center rounded-full border border-border bg-muted ring-1 ring-background">
+                                      <span className="text-[8px] font-medium text-muted-foreground">
+                                        +{assignees.length - 2}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
                               ) : (
                                 <div
                                   className="flex h-5 w-5 items-center justify-center rounded-full border border-dashed border-border/70"

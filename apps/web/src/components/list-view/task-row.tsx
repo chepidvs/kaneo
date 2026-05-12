@@ -30,7 +30,6 @@ import {
 import { useDeleteTask } from "@/hooks/mutations/task/use-delete-task";
 import useExternalLinks from "@/hooks/queries/external-link/use-external-links";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
-import { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
 import { cn } from "@/lib/cn";
 import { dueDateStatusColors, getDueDateStatus } from "@/lib/due-date-status";
 import { getPriorityIcon } from "@/lib/priority";
@@ -77,15 +76,7 @@ function TaskRow({ task, projectSlug }: TaskRowProps) {
   const isTaskSelected = isSelected(task.id);
   const isTaskFocused = isFocused(task.id);
 
-  const { data: workspaceUsers } = useGetActiveWorkspaceUsers(
-    workspace?.id ?? "",
-  );
-
-  const assignee = useMemo(() => {
-    return workspaceUsers?.members?.find(
-      (member) => member.userId === task.userId,
-    );
-  }, [workspaceUsers, task.userId]);
+  const assignees = task.assignees ?? [];
 
   const pullRequests = useMemo(() => {
     if (!externalLinks) return [];
@@ -350,17 +341,28 @@ function TaskRow({ task, projectSlug }: TaskRowProps) {
             )}
 
             {showAssignees && (
-              <div className="flex-shrink-0">
-                {task.userId ? (
-                  <Avatar className="h-6 w-6">
-                    <AvatarImage
-                      src={assignee?.user?.image ?? ""}
-                      alt={assignee?.user?.name || ""}
-                    />
-                    <AvatarFallback className="text-xs font-medium border border-border/30">
-                      {assignee?.user?.name?.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
+              <div className="flex-shrink-0 flex -space-x-1.5">
+                {assignees.length > 0 ? (
+                  <>
+                    {assignees.slice(0, 3).map((a) => (
+                      <Avatar
+                        key={a.id}
+                        className="h-6 w-6 ring-1 ring-background"
+                      >
+                        <AvatarImage src={a.image ?? ""} alt={a.name || ""} />
+                        <AvatarFallback className="text-xs font-medium border border-border/30">
+                          {a.name?.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                    ))}
+                    {assignees.length > 3 && (
+                      <div className="flex h-6 w-6 items-center justify-center rounded-full border border-border bg-muted ring-1 ring-background">
+                        <span className="text-[9px] font-medium text-muted-foreground">
+                          +{assignees.length - 3}
+                        </span>
+                      </div>
+                    )}
+                  </>
                 ) : (
                   <div
                     className="w-6 h-6 rounded-full bg-muted border border-border flex items-center justify-center"

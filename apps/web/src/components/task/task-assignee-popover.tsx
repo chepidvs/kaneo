@@ -8,15 +8,14 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { ShortcutNumber } from "@/components/ui/shortcut-number";
-import { useUpdateTaskAssignee } from "@/hooks/mutations/task/use-update-task-assignee";
+import { useUpdateTaskAssignees } from "@/hooks/mutations/task/use-update-task-assignees";
 import useGetProjectMembers from "@/hooks/queries/project/use-get-project-members";
-import { useNumberedShortcuts } from "@/hooks/use-numbered-shortcuts";
 import { toast } from "@/lib/toast";
 import type Task from "@/types/task";
 
 const INITIAL_VISIBLE_USERS = 40;
 const VISIBLE_USERS_STEP = 40;
+const MAX_ASSIGNEES = 5;
 
 type TaskAssigneePopoverProps = {
   task: Task;
@@ -32,8 +31,15 @@ export default function TaskAssigneePopover({
   const [visibleUsersCount, setVisibleUsersCount] = useState(
     INITIAL_VISIBLE_USERS,
   );
-  const { mutateAsync: updateTaskAssignee } = useUpdateTaskAssignee();
+  const { mutateAsync: updateTaskAssignees } = useUpdateTaskAssignees();
   const { data: projectMembers = [] } = useGetProjectMembers(task.projectId);
+
+  const currentAssigneeIds = useMemo(() => {
+    if (task.assignees?.length) {
+      return new Set(task.assignees.map((a) => a.id));
+    }
+    return task.userId ? new Set([task.userId]) : new Set<string>();
+  }, [task.assignees, task.userId]);
 
   const usersOptions = useMemo(() => {
     return projectMembers.map((member) => ({
@@ -44,14 +50,32 @@ export default function TaskAssigneePopover({
     }));
   }, [projectMembers]);
 
-  const handleAssigneeChange = useCallback(
-    async (newUserId: string) => {
+  const handleToggleAssignee = useCallback(
+    async (toggleUserId: string) => {
+      const current = [...currentAssigneeIds];
+      let next: string[];
+
+      if (currentAssigneeIds.has(toggleUserId)) {
+        next = current.filter((id) => id !== toggleUserId);
+      } else {
+        if (current.length >= MAX_ASSIGNEES) {
+          toast.error(
+            t("tasks:popover.assignee.maxReached", {
+              max: MAX_ASSIGNEES,
+              defaultValue: `Maximum ${MAX_ASSIGNEES} assignees allowed`,
+            }),
+          );
+          return;
+        }
+        next = [...current, toggleUserId];
+      }
+
       try {
-        await updateTaskAssignee({
-          ...task,
-          userId: newUserId,
+        await updateTaskAssignees({
+          taskId: task.id,
+          projectId: task.projectId,
+          userIds: next,
         });
-        setOpen(false);
       } catch (error) {
         toast.error(
           error instanceof Error
@@ -60,16 +84,24 @@ export default function TaskAssigneePopover({
         );
       }
     },
-    [t, task, updateTaskAssignee],
+    [t, task.id, task.projectId, currentAssigneeIds, updateTaskAssignees],
   );
 
-  const shortcutOptions = useMemo(() => {
-    const unassignedOption = { onSelect: () => handleAssigneeChange("") };
-    const userOptions = (usersOptions || []).slice(0, 8).map((user) => ({
-      onSelect: () => handleAssigneeChange(user.value),
-    }));
-    return [unassignedOption, ...userOptions];
-  }, [usersOptions, handleAssigneeChange]);
+  const handleClearAll = useCallback(async () => {
+    try {
+      await updateTaskAssignees({
+        taskId: task.id,
+        projectId: task.projectId,
+        userIds: [],
+      });
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : t("tasks:popover.assignee.updateError"),
+      );
+    }
+  }, [t, task.id, task.projectId, updateTaskAssignees]);
 
   const visibleUsersOptions = useMemo(() => {
     return usersOptions?.slice(0, visibleUsersCount) ?? [];
@@ -98,8 +130,6 @@ export default function TaskAssigneePopover({
     [usersOptions?.length],
   );
 
-  useNumberedShortcuts(open, shortcutOptions);
-
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>{children}</PopoverTrigger>
@@ -112,7 +142,7 @@ export default function TaskAssigneePopover({
             variant="ghost"
             size="sm"
             className="w-full justify-start gap-2 h-8 px-2"
-            onClick={() => handleAssigneeChange("")}
+            onClick={handleClearAll}
           >
             <div
               className="w-6 h-6 rounded-full bg-muted border border-border flex items-center justify-center"
@@ -125,34 +155,39 @@ export default function TaskAssigneePopover({
             <span className="text-sm">
               {t("tasks:popover.assignee.unassigned")}
             </span>
-            {!task.userId ? (
+            {currentAssigneeIds.size === 0 && (
               <Check className="ml-auto h-4 w-4" />
-            ) : (
-              <ShortcutNumber number={1} />
             )}
           </Button>
-          {visibleUsersOptions.map((user, index) => (
-            <Button
-              key={user.value}
-              variant="ghost"
-              size="sm"
-              className="w-full justify-start gap-2 h-8 px-2"
-              onClick={() => handleAssigneeChange(user.value)}
-            >
-              <Avatar className="h-6 w-6">
-                <AvatarImage src={user.image ?? ""} alt={user.name || ""} />
-                <AvatarFallback className="text-xs font-medium border border-border/30">
-                  {user.name?.charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <span className="text-sm truncate">{user.label}</span>
-              {task.userId === user.value ? (
-                <Check className="ml-auto h-4 w-4 shrink-0" />
-              ) : index < 8 ? (
-                <ShortcutNumber number={index + 2} />
-              ) : null}
-            </Button>
-          ))}
+          {visibleUsersOptions.map((user) => {
+            const isSelected = currentAssigneeIds.has(user.value);
+            const atMax =
+              currentAssigneeIds.size >= MAX_ASSIGNEES && !isSelected;
+            return (
+              <Button
+                key={user.value}
+                variant="ghost"
+                size="sm"
+                className={`w-full justify-start gap-2 h-8 px-2 ${atMax ? "opacity-50" : ""}`}
+                onClick={() => handleToggleAssignee(user.value)}
+                disabled={atMax}
+              >
+                <Avatar className="h-6 w-6">
+                  <AvatarImage src={user.image ?? ""} alt={user.name || ""} />
+                  <AvatarFallback className="text-xs font-medium border border-border/30">
+                    {user.name?.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="text-sm truncate">{user.label}</span>
+                {isSelected && <Check className="ml-auto h-4 w-4 shrink-0" />}
+              </Button>
+            );
+          })}
+          {currentAssigneeIds.size > 0 && (
+            <div className="px-2 py-1 text-[10px] text-muted-foreground text-right">
+              {currentAssigneeIds.size}/{MAX_ASSIGNEES}
+            </div>
+          )}
         </div>
       </PopoverContent>
     </Popover>

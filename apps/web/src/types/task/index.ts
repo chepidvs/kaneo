@@ -20,6 +20,12 @@ type TaskExternalLink = {
   metadata: Record<string, unknown> | null;
 };
 
+type TaskAssignee = {
+  id: string;
+  name: string;
+  image: string | null;
+};
+
 type Task = {
   id: string;
   title: string;
@@ -37,6 +43,7 @@ type Task = {
   assigneeId: string | null;
   assigneeName: string | null;
   assigneeImage?: string | null;
+  assignees?: TaskAssignee[];
   projectId: string;
   columnId?: string | null;
   modules?: TaskModule[];
@@ -44,4 +51,5 @@ type Task = {
   externalLinks?: TaskExternalLink[];
 };
 
+export type { TaskAssignee };
 export default Task;

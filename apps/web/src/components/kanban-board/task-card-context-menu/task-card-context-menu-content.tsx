@@ -15,14 +15,14 @@ import {
 } from "@/components/ui/context-menu";
 import useCloneTask from "@/hooks/mutations/task/use-clone-task";
 import { useUpdateTask } from "@/hooks/mutations/task/use-update-task";
-import { useUpdateTaskAssignee } from "@/hooks/mutations/task/use-update-task-assignee";
+import { useUpdateTaskAssignees } from "@/hooks/mutations/task/use-update-task-assignees";
 import { useUpdateTaskDescription } from "@/hooks/mutations/task/use-update-task-description";
 import { useUpdateTaskDueDate } from "@/hooks/mutations/task/use-update-task-due-date";
 import { useUpdateTaskStatus } from "@/hooks/mutations/task/use-update-task-status";
 import { useUpdateTaskPriority } from "@/hooks/mutations/task/use-update-task-status-priority";
 import { useUpdateTaskTitle } from "@/hooks/mutations/task/use-update-task-title";
 import { useGetColumns } from "@/hooks/queries/column/use-get-columns";
-import { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
+import useGetProjectMembers from "@/hooks/queries/project/use-get-project-members";
 import { getColumnIcon } from "@/lib/column";
 import { generateLink } from "@/lib/generate-link";
 import { getPriorityLabel } from "@/lib/i18n/domain";
@@ -64,25 +64,32 @@ export default function TaskCardContextMenuContent({
           name: col.name,
           isFinal: col.isFinal,
         }));
-  const { data: workspaceUsers } = useGetActiveWorkspaceUsers(
-    taskCardContext.worskpaceId,
+  const { data: projectMembers = [] } = useGetProjectMembers(
+    taskCardContext.projectId,
   );
   const { mutateAsync: updateTask } = useUpdateTask();
   const { mutateAsync: updateTaskPriority } = useUpdateTaskPriority();
   const { mutateAsync: updateTaskStatus } = useUpdateTaskStatus();
-  const { mutateAsync: updateTaskAssignee } = useUpdateTaskAssignee();
+  const { mutateAsync: updateTaskAssignees } = useUpdateTaskAssignees();
   const { mutateAsync: updateTaskTitle } = useUpdateTaskTitle();
   const { mutateAsync: updateTaskDescription } = useUpdateTaskDescription();
   const { mutateAsync: updateTaskDueDate } = useUpdateTaskDueDate();
 
   const usersOptions = useMemo(() => {
-    return workspaceUsers?.members?.map((member) => ({
-      label: member?.user?.name ?? member.userId,
-      value: member.userId,
-      image: member?.user?.image ?? "",
-      name: member?.user?.name ?? "",
+    return projectMembers.map((member) => ({
+      label: member.name ?? member.id,
+      value: member.id,
+      image: member.image ?? "",
+      name: member.name ?? "",
     }));
-  }, [workspaceUsers]);
+  }, [projectMembers]);
+
+  const currentAssigneeIds = useMemo(() => {
+    if (task.assignees?.length) {
+      return new Set(task.assignees.map((a) => a.id));
+    }
+    return task.userId ? new Set([task.userId]) : new Set<string>();
+  }, [task.assignees, task.userId]);
 
   const handleCopyTaskLink = () => {
     const path = `/dashboard/workspace/${taskCardContext.worskpaceId}/project/${taskCardContext.projectId}/task/${task.id}`;
@@ -116,9 +123,6 @@ export default function TaskCardContextMenuContent({
         case "status":
           await updateTaskStatus({ ...task, status: value as string });
           break;
-        case "userId":
-          await updateTaskAssignee({ ...task, userId: value as string });
-          break;
         case "title":
           await updateTaskTitle({ ...task, title: value as string });
           break;
@@ -140,6 +144,38 @@ export default function TaskCardContextMenuContent({
       );
     } finally {
       toast.success(t("tasks:update.success"));
+    }
+  };
+
+  const handleToggleAssignee = async (userId: string) => {
+    const current = [...currentAssigneeIds];
+    const next = currentAssigneeIds.has(userId)
+      ? current.filter((id) => id !== userId)
+      : [...current, userId];
+    try {
+      await updateTaskAssignees({
+        taskId: task.id,
+        projectId: task.projectId,
+        userIds: next,
+      });
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : t("tasks:update.error"),
+      );
+    }
+  };
+
+  const handleClearAssignees = async () => {
+    try {
+      await updateTaskAssignees({
+        taskId: task.id,
+        projectId: task.projectId,
+        userIds: [],
+      });
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : t("tasks:update.error"),
+      );
     }
   };
 
@@ -261,15 +297,15 @@ export default function TaskCardContextMenuContent({
         </ContextMenuSubContent>
       </ContextMenuSub>
 
-      {usersOptions && (
+      {usersOptions.length > 0 && (
         <ContextMenuSub>
           <ContextMenuSubTrigger>
             <span>{t("tasks:assignee.label")}</span>
           </ContextMenuSubTrigger>
           <ContextMenuSubContent className="w-48">
             <ContextMenuCheckboxItem
-              checked={!task.userId}
-              onCheckedChange={() => handleChange("userId", "")}
+              checked={currentAssigneeIds.size === 0}
+              onCheckedChange={handleClearAssignees}
               closeOnClick
             >
               <div
@@ -278,16 +314,15 @@ export default function TaskCardContextMenuContent({
               >
                 <span className="text-[10px] font-medium text-muted-foreground">
                   ?
-                </span>{" "}
+                </span>
               </div>
               {t("tasks:assignee.unassigned")}
             </ContextMenuCheckboxItem>
             {usersOptions.map((user) => (
               <ContextMenuCheckboxItem
                 key={user.value}
-                checked={task.userId === user.value}
-                onCheckedChange={() => handleChange("userId", user.value ?? "")}
-                closeOnClick
+                checked={currentAssigneeIds.has(user.value)}
+                onCheckedChange={() => handleToggleAssignee(user.value)}
               >
                 <Avatar className="h-6 w-6">
                   <AvatarImage src={user.image ?? ""} alt={user.name || ""} />
