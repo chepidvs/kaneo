@@ -62,13 +62,11 @@ function TaskCard({ task }: TaskCardProps) {
   const { data: workspace } = useActiveWorkspace();
   const { mutateAsync: deleteTask } = useDeleteTask();
   const navigate = useNavigate();
-  const {
-    showAssignees,
-    showPriority,
-    showDueDates,
-    showLabels,
-    showTaskNumbers,
-  } = useUserPreferencesStore();
+  const showAssignees = useUserPreferencesStore((s) => s.showAssignees);
+  const showPriority = useUserPreferencesStore((s) => s.showPriority);
+  const showDueDates = useUserPreferencesStore((s) => s.showDueDates);
+  const showLabels = useUserPreferencesStore((s) => s.showLabels);
+  const showTaskNumbers = useUserPreferencesStore((s) => s.showTaskNumbers);
   const [isDeleteTaskModalOpen, setIsDeleteTaskModalOpen] = useState(false);
   const { data: externalLinks } = useExternalLinks(task.id);
   const { toggleSelection, isSelected, isFocused } = useBulkSelectionStore();

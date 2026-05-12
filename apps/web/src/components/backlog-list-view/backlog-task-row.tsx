@@ -54,13 +54,11 @@ export default function BacklogTaskRow({ task }: BacklogTaskRowProps) {
 
   const { project } = useProjectStore();
   const { data: workspace } = useActiveWorkspace();
-  const {
-    showAssignees,
-    showPriority,
-    showDueDates,
-    showLabels,
-    showTaskNumbers,
-  } = useUserPreferencesStore();
+  const showAssignees = useUserPreferencesStore((s) => s.showAssignees);
+  const showPriority = useUserPreferencesStore((s) => s.showPriority);
+  const showDueDates = useUserPreferencesStore((s) => s.showDueDates);
+  const showLabels = useUserPreferencesStore((s) => s.showLabels);
+  const showTaskNumbers = useUserPreferencesStore((s) => s.showTaskNumbers);
   const [isDeleteTaskModalOpen, setIsDeleteTaskModalOpen] = useState(false);
   const { mutateAsync: deleteTask } = useDeleteTask();
   const { toggleSelection, isSelected, isFocused } =
