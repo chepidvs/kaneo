@@ -4,6 +4,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
 import {
   Calendar,
+  CalendarArrowUp,
   CalendarClock,
   CalendarX,
   GitMerge,
@@ -271,6 +272,13 @@ function TaskCard({ task }: TaskCardProps) {
                 <span className="inline-flex items-center gap-1 rounded border border-border/70 bg-muted/55 px-2 py-1 text-[10px] font-medium text-muted-foreground">
                   {getPriorityIcon(task.priority ?? "")}
                 </span>
+              )}
+
+              {showDueDates && task.startDate && (
+                <div className="flex items-center gap-1 text-[10px] px-2 py-1 rounded text-muted-foreground">
+                  <CalendarArrowUp className="w-3 h-3" />
+                  <span>{format(new Date(task.startDate), "MMM d")}</span>
+                </div>
               )}
 
               {showDueDates && task.dueDate && (

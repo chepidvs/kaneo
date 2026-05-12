@@ -4,6 +4,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
 import {
   Calendar,
+  CalendarArrowUp,
   CalendarClock,
   CalendarX,
   GitMerge,
@@ -321,6 +322,13 @@ function TaskRow({ task, projectSlug }: TaskRowProps) {
                 </div>
               </div>
             </div>
+
+            {showDueDates && task.startDate && (
+              <div className="flex items-center gap-1 text-[10px] px-2 py-1 rounded flex-shrink-0 text-muted-foreground">
+                <CalendarArrowUp className="w-3 h-3" />
+                <span>{format(new Date(task.startDate), "MMM d")}</span>
+              </div>
+            )}
 
             {showDueDates && task.dueDate && (
               <div

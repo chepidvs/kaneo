@@ -2,7 +2,12 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
-import { Calendar, CalendarClock, CalendarX } from "lucide-react";
+import {
+  Calendar,
+  CalendarArrowUp,
+  CalendarClock,
+  CalendarX,
+} from "lucide-react";
 import { type CSSProperties, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -167,6 +172,13 @@ export default function BacklogTaskRow({ task }: BacklogTaskRowProps) {
                 )}
               </div>
             </div>
+
+            {showDueDates && task.startDate && (
+              <div className="flex items-center gap-1 text-[10px] px-2 py-1 rounded flex-shrink-0 text-muted-foreground">
+                <CalendarArrowUp className="w-3 h-3" />
+                <span>{format(new Date(task.startDate), "MMM d")}</span>
+              </div>
+            )}
 
             {showDueDates && task.dueDate && (
               <div
