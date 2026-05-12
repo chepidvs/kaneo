@@ -1,8 +1,18 @@
-import { and, between, eq, isNotNull, isNull, or } from "drizzle-orm";
+import {
+  and,
+  between,
+  eq,
+  exists,
+  isNotNull,
+  isNull,
+  or,
+  sql,
+} from "drizzle-orm";
 import db from "../database";
 import {
   columnTable,
   projectMemberTable,
+  taskAssigneeTable,
   taskReminderSentTable,
   taskTable,
 } from "../database/schema";
@@ -47,7 +57,6 @@ async function getTasksNeedingReminder(
     .select({
       id: taskTable.id,
       title: taskTable.title,
-      userId: taskTable.userId,
       dueDate: taskTable.dueDate,
       projectId: taskTable.projectId,
     })
@@ -62,11 +71,15 @@ async function getTasksNeedingReminder(
     )
     .where(
       and(
-        isNotNull(taskTable.userId),
+        exists(
+          db
+            .select({ one: sql`1` })
+            .from(taskAssigneeTable)
+            .where(eq(taskAssigneeTable.taskId, taskTable.id)),
+        ),
         isNotNull(taskTable.dueDate),
         between(taskTable.dueDate, windowStart, windowEnd),
         isNull(taskReminderSentTable.id),
-        // Exclude tasks in final columns (completed); include tasks with no column
         or(isNull(columnTable.isFinal), eq(columnTable.isFinal, false)),
       ),
     );
@@ -78,29 +91,19 @@ async function processReminder(
   task: {
     id: string;
     title: string;
-    userId: string | null;
     dueDate: Date | null;
     projectId: string;
   },
   reminderType: ReminderType,
   notificationType: "due_date_reminder" | "task_overdue",
 ) {
-  if (!task.userId) return;
+  const assignees = await db
+    .select({ userId: taskAssigneeTable.userId })
+    .from(taskAssigneeTable)
+    .where(eq(taskAssigneeTable.taskId, task.id));
 
-  const [projectMember] = await db
-    .select({ userId: projectMemberTable.userId })
-    .from(projectMemberTable)
-    .where(
-      and(
-        eq(projectMemberTable.projectId, task.projectId),
-        eq(projectMemberTable.userId, task.userId),
-      ),
-    )
-    .limit(1);
+  if (assignees.length === 0) return;
 
-  if (!projectMember) return;
-
-  // Insert sent record first — if it already exists, skip notification
   try {
     const [inserted] = await db
       .insert(taskReminderSentTable)
@@ -121,17 +124,32 @@ async function processReminder(
     return;
   }
 
-  await createNotification({
-    userId: task.userId,
-    type: notificationType,
-    eventData: {
-      taskTitle: task.title,
-      reminderType,
-      dueDate: task.dueDate?.toISOString() ?? null,
-    },
-    resourceId: task.id,
-    resourceType: "task",
-  });
+  for (const assignee of assignees) {
+    const [projectMember] = await db
+      .select({ userId: projectMemberTable.userId })
+      .from(projectMemberTable)
+      .where(
+        and(
+          eq(projectMemberTable.projectId, task.projectId),
+          eq(projectMemberTable.userId, assignee.userId),
+        ),
+      )
+      .limit(1);
+
+    if (!projectMember) continue;
+
+    await createNotification({
+      userId: assignee.userId,
+      type: notificationType,
+      eventData: {
+        taskTitle: task.title,
+        reminderType,
+        dueDate: task.dueDate?.toISOString() ?? null,
+      },
+      resourceId: task.id,
+      resourceType: "task",
+    });
+  }
 }
 
 export async function checkDueDateReminders(): Promise<void> {

@@ -291,6 +291,35 @@ subscribeToEvent<{
 subscribeToEvent<{
   taskId: string;
   userId: string;
+  assigneeId: string;
+  assigneeName: string;
+  title: string;
+  type: string;
+}>("task.assignee_added", async (data) => {
+  await createActivity(data.taskId, data.type, data.userId, null, {
+    newAssigneeId: data.assigneeId,
+    newAssignee: data.assigneeName,
+    isSelfAssigned: data.userId === data.assigneeId,
+  });
+});
+
+subscribeToEvent<{
+  taskId: string;
+  userId: string;
+  assigneeId: string;
+  assigneeName: string;
+  title: string;
+  type: string;
+}>("task.assignee_removed", async (data) => {
+  await createActivity(data.taskId, data.type, data.userId, null, {
+    removedAssigneeId: data.assigneeId,
+    removedAssignee: data.assigneeName,
+  });
+});
+
+subscribeToEvent<{
+  taskId: string;
+  userId: string;
   oldDueDate: Date | null;
   newDueDate: Date;
   title: string;

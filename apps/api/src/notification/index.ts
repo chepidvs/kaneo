@@ -326,24 +326,33 @@ subscribeToEvent<{
   newStatus: string;
   title: string;
   assigneeId?: string;
+  assigneeIds?: string[];
 }>("task.status_changed", async (data) => {
-  if (
-    data.assigneeId &&
-    data.assigneeId !== data.userId &&
-    (await isProjectMember(data.assigneeId, data.projectId))
-  ) {
-    await createNotification({
-      userId: data.assigneeId,
-      type: "task_status_changed",
-      eventData: {
-        taskTitle: data.title,
-        oldStatus: data.oldStatus,
-        newStatus: data.newStatus,
-      },
-      resourceId: data.taskId,
-      resourceType: "task",
-    });
-  }
+  const idsToNotify = data.assigneeIds?.length
+    ? data.assigneeIds
+    : data.assigneeId
+      ? [data.assigneeId]
+      : [];
+
+  await Promise.all(
+    idsToNotify
+      .filter((id) => id !== data.userId)
+      .map(async (assigneeId) => {
+        if (await isProjectMember(assigneeId, data.projectId)) {
+          await createNotification({
+            userId: assigneeId,
+            type: "task_status_changed",
+            eventData: {
+              taskTitle: data.title,
+              oldStatus: data.oldStatus,
+              newStatus: data.newStatus,
+            },
+            resourceId: data.taskId,
+            resourceType: "task",
+          });
+        }
+      }),
+  );
 });
 
 subscribeToEvent<{
@@ -363,6 +372,35 @@ subscribeToEvent<{
   ) {
     await createNotification({
       userId: data.newAssigneeId,
+      type: "task_assignee_changed",
+      eventData: {
+        taskTitle: data.title,
+        taskId: data.taskId,
+        workspaceId: data.workspaceId,
+        projectId: data.projectId,
+      },
+      resourceId: data.taskId,
+      resourceType: "task",
+    });
+  }
+});
+
+subscribeToEvent<{
+  taskId: string;
+  workspaceId: string;
+  projectId: string;
+  userId: string;
+  assigneeId: string;
+  assigneeName: string;
+  title: string;
+}>("task.assignee_added", async (data) => {
+  if (
+    data.assigneeId &&
+    data.assigneeId !== data.userId &&
+    (await isProjectMember(data.assigneeId, data.projectId))
+  ) {
+    await createNotification({
+      userId: data.assigneeId,
       type: "task_assignee_changed",
       eventData: {
         taskTitle: data.title,

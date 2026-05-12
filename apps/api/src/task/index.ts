@@ -7,6 +7,7 @@ import db from "../database";
 import {
   assetTable,
   projectTable,
+  taskAssigneeTable,
   taskTable,
   userTable,
   workspaceTable,
@@ -31,6 +32,7 @@ import importTasks from "./controllers/import-tasks";
 import moveTask from "./controllers/move-task";
 import updateTask from "./controllers/update-task";
 import updateTaskAssignee from "./controllers/update-task-assignee";
+import updateTaskAssignees from "./controllers/update-task-assignees";
 import updateTaskDescription from "./controllers/update-task-description";
 import updateTaskDueDate from "./controllers/update-task-due-date";
 import updateTaskPriority from "./controllers/update-task-priority";
@@ -379,6 +381,12 @@ const task = new Hono<{
 
       if (existingTask.status !== status) {
         const user = c.get("userId");
+        const taskAssignees = await db
+          .select({ userId: taskAssigneeTable.userId })
+          .from(taskAssigneeTable)
+          .where(eq(taskAssigneeTable.taskId, task.id));
+        const assigneeIds = taskAssignees.map((a) => a.userId);
+
         await publishEvent("task.status_changed", {
           taskId: task.id,
           projectId: task.projectId,
@@ -386,7 +394,8 @@ const task = new Hono<{
           oldStatus: existingTask.status,
           newStatus: status,
           title: task.title,
-          assigneeId: task.userId,
+          assigneeId: assigneeIds[0] ?? undefined,
+          assigneeIds,
           type: "status_changed",
         });
       }
@@ -519,6 +528,12 @@ const task = new Hono<{
 
       const task = await updateTaskStatus({ id, status });
 
+      const taskAssignees = await db
+        .select({ userId: taskAssigneeTable.userId })
+        .from(taskAssigneeTable)
+        .where(eq(taskAssigneeTable.taskId, task.id));
+      const assigneeIds = taskAssignees.map((a) => a.userId);
+
       await publishEvent("task.status_changed", {
         taskId: task.id,
         projectId: task.projectId,
@@ -526,7 +541,8 @@ const task = new Hono<{
         oldStatus: existingTask.status,
         newStatus: status,
         title: task.title,
-        assigneeId: task.userId,
+        assigneeId: assigneeIds[0] ?? undefined,
+        assigneeIds,
         type: "status_changed",
       });
 
@@ -647,6 +663,38 @@ const task = new Hono<{
         newAssigneeId: userId,
         title: task.title,
         type: "assignee_changed",
+      });
+
+      return c.json(task);
+    },
+  )
+  .put(
+    "/assignees/:id",
+    describeRoute({
+      operationId: "updateTaskAssignees",
+      tags: ["Tasks"],
+      description: "Set all assignees for a task (replace-all)",
+      responses: {
+        200: {
+          description: "Task assignees updated successfully",
+          content: {
+            "application/json": { schema: resolver(taskSchema) },
+          },
+        },
+      },
+    }),
+    validator("param", v.object({ id: v.string() })),
+    validator("json", v.object({ userIds: v.array(v.string()) })),
+    workspaceAccess.fromTask(),
+    async (c) => {
+      const { id } = c.req.valid("param");
+      const { userIds } = c.req.valid("json");
+      const user = c.get("userId");
+
+      const task = await updateTaskAssignees({
+        taskId: id,
+        userIds,
+        actorUserId: user,
       });
 
       return c.json(task);

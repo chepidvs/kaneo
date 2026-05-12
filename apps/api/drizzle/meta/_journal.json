@@ -246,6 +246,13 @@
       "when": 1777953820685,
       "tag": "0034_curvy_imperial_guard",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1778519481406,
+      "tag": "0035_fine_fabian_cortez",
+      "breakpoints": true
     }
   ]
 }

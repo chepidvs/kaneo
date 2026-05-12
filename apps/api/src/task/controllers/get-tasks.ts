@@ -18,6 +18,7 @@ import {
   labelTable,
   moduleTable,
   projectTable,
+  taskAssigneeTable,
   taskLabelTable,
   taskModuleTable,
   taskTable,
@@ -95,7 +96,19 @@ async function getTasks(projectId: string, options: GetTasksOptions = {}) {
   }
 
   if (options.assigneeId) {
-    conditions.push(eq(taskTable.userId, options.assigneeId));
+    conditions.push(
+      exists(
+        db
+          .select({ one: sql`1` })
+          .from(taskAssigneeTable)
+          .where(
+            and(
+              eq(taskAssigneeTable.taskId, taskTable.id),
+              eq(taskAssigneeTable.userId, options.assigneeId),
+            ),
+          ),
+      ),
+    );
   }
 
   if (options.moduleId) {
@@ -152,17 +165,12 @@ async function getTasks(projectId: string, options: GetTasksOptions = {}) {
     dueDate: taskTable.dueDate,
     position: taskTable.position,
     createdAt: taskTable.createdAt,
-    userId: taskTable.userId,
-    assigneeName: userTable.name,
-    assigneeId: userTable.id,
-    assigneeImage: userTable.image,
     projectId: taskTable.projectId,
   };
 
   const query = db
     .select(taskSelection)
     .from(taskTable)
-    .leftJoin(userTable, eq(taskTable.userId, userTable.id))
     .leftJoin(projectTable, eq(taskTable.projectId, projectTable.id))
     .where(whereClause)
     .orderBy(orderByClause);
@@ -208,6 +216,20 @@ async function getTasks(projectId: string, options: GetTasksOptions = {}) {
           .where(inArray(taskModuleTable.taskId, taskIds))
       : [];
 
+  const assigneesData =
+    taskIds.length > 0
+      ? await db
+          .select({
+            taskId: taskAssigneeTable.taskId,
+            id: userTable.id,
+            name: userTable.name,
+            image: userTable.image,
+          })
+          .from(taskAssigneeTable)
+          .innerJoin(userTable, eq(taskAssigneeTable.userId, userTable.id))
+          .where(inArray(taskAssigneeTable.taskId, taskIds))
+      : [];
+
   const taskLabelsMap = new Map<
     string,
     Array<{ id: string; name: string; color: string }>
@@ -233,6 +255,22 @@ async function getTasks(projectId: string, options: GetTasksOptions = {}) {
     }
 
     taskModulesMap.get(mod.taskId)?.push({ id: mod.id, name: mod.name });
+  }
+
+  const taskAssigneesMap = new Map<
+    string,
+    Array<{ id: string; name: string; image: string | null }>
+  >();
+
+  for (const a of assigneesData) {
+    if (!taskAssigneesMap.has(a.taskId)) {
+      taskAssigneesMap.set(a.taskId, []);
+    }
+    taskAssigneesMap.get(a.taskId)?.push({
+      id: a.id,
+      name: a.name,
+      image: a.image,
+    });
   }
 
   const taskExternalLinksMap = new Map<
@@ -268,37 +306,37 @@ async function getTasks(projectId: string, options: GetTasksOptions = {}) {
     .where(eq(columnTable.projectId, projectId))
     .orderBy(asc(columnTable.position));
 
+  function enrichTask(task: (typeof paginatedTasks)[number]) {
+    const assignees = taskAssigneesMap.get(task.id) || [];
+    return {
+      ...task,
+      assignees,
+      userId: assignees[0]?.id ?? null,
+      assigneeName: assignees[0]?.name ?? null,
+      assigneeId: assignees[0]?.id ?? null,
+      assigneeImage: assignees[0]?.image ?? null,
+      labels: taskLabelsMap.get(task.id) || [],
+      externalLinks: taskExternalLinksMap.get(task.id) || [],
+      modules: taskModulesMap.get(task.id) || [],
+    };
+  }
+
   const columns = projectColumns.map((column) => ({
     id: column.slug,
     name: column.name,
     isFinal: column.isFinal,
     tasks: paginatedTasks
       .filter((task) => task.status === column.slug)
-      .map((task) => ({
-        ...task,
-        labels: taskLabelsMap.get(task.id) || [],
-        externalLinks: taskExternalLinksMap.get(task.id) || [],
-        modules: taskModulesMap.get(task.id) || [],
-      })),
+      .map(enrichTask),
   }));
 
   const archivedTasks = paginatedTasks
     .filter((task) => task.status === "archived")
-    .map((task) => ({
-      ...task,
-      labels: taskLabelsMap.get(task.id) || [],
-      externalLinks: taskExternalLinksMap.get(task.id) || [],
-      modules: taskModulesMap.get(task.id) || [],
-    }));
+    .map(enrichTask);
 
   const plannedTasks = paginatedTasks
     .filter((task) => task.status === "planned")
-    .map((task) => ({
-      ...task,
-      labels: taskLabelsMap.get(task.id) || [],
-      externalLinks: taskExternalLinksMap.get(task.id) || [],
-      modules: taskModulesMap.get(task.id) || [],
-    }));
+    .map(enrichTask);
 
   return {
     data: {

@@ -1,7 +1,12 @@
 import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { columnTable, projectTable, taskTable } from "../../database/schema";
+import {
+  columnTable,
+  projectTable,
+  taskAssigneeTable,
+  taskTable,
+} from "../../database/schema";
 import { publishEvent } from "../../events";
 import {
   coercePriority,
@@ -18,6 +23,7 @@ type ImportTask = {
   startDate?: string;
   dueDate?: string;
   userId?: string | null;
+  userIds?: string[];
 };
 
 async function importTasks(
@@ -59,11 +65,17 @@ async function importTasks(
         ),
       });
 
+      const resolvedUserIds = taskData.userIds?.length
+        ? taskData.userIds
+        : taskData.userId
+          ? [taskData.userId]
+          : [];
+
       const [createdTask] = await db
         .insert(taskTable)
         .values({
           projectId,
-          userId: taskData.userId || null,
+          userId: resolvedUserIds[0] || null,
           title: taskData.title,
           status,
           columnId: column?.id ?? null,
@@ -76,6 +88,20 @@ async function importTasks(
         .returning();
 
       if (createdTask) {
+        if (resolvedUserIds.length > 0) {
+          await db
+            .insert(taskAssigneeTable)
+            .values(
+              resolvedUserIds.map((uid) => ({
+                taskId: createdTask.id,
+                userId: uid,
+              })),
+            )
+            .onConflictDoNothing({
+              target: [taskAssigneeTable.taskId, taskAssigneeTable.userId],
+            });
+        }
+
         await publishEvent("task.created", {
           taskId: createdTask.id,
           projectId,

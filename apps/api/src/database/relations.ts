@@ -17,6 +17,7 @@ import {
   projectMemberTable,
   projectTable,
   sessionTable,
+  taskAssigneeTable,
   taskLabelTable,
   taskModuleTable,
   taskRelationTable,
@@ -43,6 +44,7 @@ export const userTableRelations = relations(userTable, ({ many, one }) => ({
   workspaces: many(workspaceTable),
   workspaceMemberships: many(workspaceUserTable),
   assignedTasks: many(taskTable),
+  taskAssignments: many(taskAssigneeTable),
   timeEntries: many(timeEntryTable),
   activities: many(activityTable),
   comments: many(commentTable),
@@ -214,6 +216,7 @@ export const taskTableRelations = relations(taskTable, ({ one, many }) => ({
   assets: many(assetTable),
   taskLabels: many(taskLabelTable),
   taskModules: many(taskModuleTable),
+  taskAssignees: many(taskAssigneeTable),
   externalLinks: many(externalLinkTable),
   sourceRelations: many(taskRelationTable, { relationName: "sourceTask" }),
   targetRelations: many(taskRelationTable, { relationName: "targetTask" }),
@@ -283,6 +286,20 @@ export const taskLabelTableRelations = relations(taskLabelTable, ({ one }) => ({
     references: [labelTable.id],
   }),
 }));
+
+export const taskAssigneeTableRelations = relations(
+  taskAssigneeTable,
+  ({ one }) => ({
+    task: one(taskTable, {
+      fields: [taskAssigneeTable.taskId],
+      references: [taskTable.id],
+    }),
+    user: one(userTable, {
+      fields: [taskAssigneeTable.userId],
+      references: [userTable.id],
+    }),
+  }),
+);
 
 export const notificationTableRelations = relations(
   notificationTable,

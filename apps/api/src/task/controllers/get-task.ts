@@ -3,6 +3,7 @@ import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import {
   moduleTable,
+  taskAssigneeTable,
   taskModuleTable,
   taskTable,
   userTable,
@@ -24,14 +25,10 @@ async function getTask(taskId: string) {
       position: taskTable.position,
       createdAt: taskTable.createdAt,
       updatedAt: taskTable.updatedAt,
-      userId: taskTable.userId,
-      assigneeName: userTable.name,
-      assigneeId: userTable.id,
       projectId: taskTable.projectId,
       createdByName: creatorTable.name,
     })
     .from(taskTable)
-    .leftJoin(userTable, eq(taskTable.userId, userTable.id))
     .leftJoin(creatorTable, eq(taskTable.createdBy, creatorTable.id))
     .where(eq(taskTable.id, taskId))
     .limit(1);
@@ -42,13 +39,31 @@ async function getTask(taskId: string) {
     });
   }
 
-  const modulesData = await db
-    .select({ id: moduleTable.id, name: moduleTable.name })
-    .from(taskModuleTable)
-    .innerJoin(moduleTable, eq(taskModuleTable.moduleId, moduleTable.id))
-    .where(eq(taskModuleTable.taskId, taskId));
+  const [modulesData, assigneesData] = await Promise.all([
+    db
+      .select({ id: moduleTable.id, name: moduleTable.name })
+      .from(taskModuleTable)
+      .innerJoin(moduleTable, eq(taskModuleTable.moduleId, moduleTable.id))
+      .where(eq(taskModuleTable.taskId, taskId)),
+    db
+      .select({
+        id: userTable.id,
+        name: userTable.name,
+        image: userTable.image,
+      })
+      .from(taskAssigneeTable)
+      .innerJoin(userTable, eq(taskAssigneeTable.userId, userTable.id))
+      .where(eq(taskAssigneeTable.taskId, taskId)),
+  ]);
 
-  return { ...task[0], modules: modulesData };
+  return {
+    ...task[0],
+    assignees: assigneesData,
+    userId: assigneesData[0]?.id ?? null,
+    assigneeName: assigneesData[0]?.name ?? null,
+    assigneeId: assigneesData[0]?.id ?? null,
+    modules: modulesData,
+  };
 }
 
 export default getTask;

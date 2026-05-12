@@ -5,6 +5,7 @@ import {
   columnTable,
   labelTable,
   projectTable,
+  taskAssigneeTable,
   taskLabelTable,
   taskTable,
   workspaceUserTable,
@@ -133,6 +134,21 @@ async function bulkUpdateTasks({
     }
 
     case "updateAssignee": {
+      for (const taskId of foundIds) {
+        await db
+          .delete(taskAssigneeTable)
+          .where(eq(taskAssigneeTable.taskId, taskId));
+
+        if (value) {
+          await db
+            .insert(taskAssigneeTable)
+            .values({ taskId, userId: value })
+            .onConflictDoNothing({
+              target: [taskAssigneeTable.taskId, taskAssigneeTable.userId],
+            });
+        }
+      }
+
       const result = await db
         .update(taskTable)
         .set({ userId: value || null })

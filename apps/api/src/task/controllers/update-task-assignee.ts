@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { taskTable } from "../../database/schema";
+import { taskAssigneeTable, taskTable } from "../../database/schema";
 
 async function updateTaskAssignee({
   id,
@@ -18,6 +18,17 @@ async function updateTaskAssignee({
     throw new HTTPException(404, {
       message: "Task not found",
     });
+  }
+
+  await db.delete(taskAssigneeTable).where(eq(taskAssigneeTable.taskId, id));
+
+  if (userId) {
+    await db
+      .insert(taskAssigneeTable)
+      .values({ taskId: id, userId })
+      .onConflictDoNothing({
+        target: [taskAssigneeTable.taskId, taskAssigneeTable.userId],
+      });
   }
 
   const [updatedTask] = await db

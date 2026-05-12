@@ -1,7 +1,11 @@
 import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { columnTable, taskTable } from "../../database/schema";
+import {
+  columnTable,
+  taskAssigneeTable,
+  taskTable,
+} from "../../database/schema";
 import { assertValidTaskStatus } from "../validate-task-fields";
 
 async function updateTask(
@@ -56,6 +60,19 @@ async function updateTask(
     throw new HTTPException(500, {
       message: "Failed to update task",
     });
+  }
+
+  if (userId !== undefined) {
+    await db.delete(taskAssigneeTable).where(eq(taskAssigneeTable.taskId, id));
+
+    if (userId) {
+      await db
+        .insert(taskAssigneeTable)
+        .values({ taskId: id, userId })
+        .onConflictDoNothing({
+          target: [taskAssigneeTable.taskId, taskAssigneeTable.userId],
+        });
+    }
   }
 
   return updatedTask;

@@ -1,7 +1,12 @@
 import { and, eq, max } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { columnTable, taskTable, userTable } from "../../database/schema";
+import {
+  columnTable,
+  taskAssigneeTable,
+  taskTable,
+  userTable,
+} from "../../database/schema";
 import { publishEvent } from "../../events";
 import { assertValidTaskStatus } from "../validate-task-fields";
 import getNextTaskNumber from "./get-next-task-number";
@@ -9,6 +14,7 @@ import getNextTaskNumber from "./get-next-task-number";
 async function createTask({
   projectId,
   userId,
+  userIds,
   createdBy,
   title,
   status,
@@ -19,6 +25,7 @@ async function createTask({
 }: {
   projectId: string;
   userId?: string;
+  userIds?: string[];
   createdBy?: string;
   title: string;
   status: string;
@@ -32,10 +39,15 @@ async function createTask({
 
   await assertValidTaskStatus(resolvedStatus, projectId);
 
-  const [assignee] = await db
-    .select({ name: userTable.name })
-    .from(userTable)
-    .where(eq(userTable.id, userId ?? ""));
+  const resolvedUserIds = userIds?.length ? userIds : userId ? [userId] : [];
+
+  const firstUserId = resolvedUserIds[0];
+  const [assignee] = firstUserId
+    ? await db
+        .select({ name: userTable.name })
+        .from(userTable)
+        .where(eq(userTable.id, firstUserId))
+    : [undefined];
 
   const nextTaskNumber = await getNextTaskNumber(projectId);
 
@@ -64,7 +76,7 @@ async function createTask({
     .insert(taskTable)
     .values({
       projectId,
-      userId: userId || null,
+      userId: resolvedUserIds[0] || null,
       createdBy: createdBy || null,
       title: title || "",
       status: resolvedStatus,
@@ -82,6 +94,20 @@ async function createTask({
     throw new HTTPException(500, {
       message: "Failed to create task",
     });
+  }
+
+  if (resolvedUserIds.length > 0) {
+    await db
+      .insert(taskAssigneeTable)
+      .values(
+        resolvedUserIds.map((uid) => ({
+          taskId: createdTask.id,
+          userId: uid,
+        })),
+      )
+      .onConflictDoNothing({
+        target: [taskAssigneeTable.taskId, taskAssigneeTable.userId],
+      });
   }
 
   await publishEvent("task.created", {

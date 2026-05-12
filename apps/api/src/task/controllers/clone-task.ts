@@ -2,6 +2,7 @@ import { and, eq, max } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import {
+  taskAssigneeTable,
   taskLabelTable,
   taskModuleTable,
   taskTable,
@@ -77,6 +78,19 @@ async function cloneTask(id: string, clonedBy?: string) {
       originalModules.map((tm) => ({
         taskId: clonedTask.id,
         moduleId: tm.moduleId,
+      })),
+    );
+  }
+
+  const originalAssignees = await db.query.taskAssigneeTable.findMany({
+    where: eq(taskAssigneeTable.taskId, id),
+  });
+
+  if (originalAssignees.length > 0) {
+    await db.insert(taskAssigneeTable).values(
+      originalAssignees.map((ta) => ({
+        taskId: clonedTask.id,
+        userId: ta.userId,
       })),
     );
   }
