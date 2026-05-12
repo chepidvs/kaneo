@@ -3,10 +3,7 @@ import { createJSONStorage, persist } from "zustand/middleware";
 
 type UserPreferencesStore = {
   theme: "light" | "dark" | "system";
-  setTheme: (
-    theme: "light" | "dark" | "system",
-    coordinates?: { x: number; y: number },
-  ) => void;
+  setTheme: (theme: "light" | "dark" | "system") => void;
 
   viewMode: "board" | "list";
   setViewMode: (mode: "board" | "list") => void;
@@ -42,31 +39,8 @@ export const useUserPreferencesStore = create<UserPreferencesStore>()(
   persist(
     (set) => ({
       theme: "dark",
-      setTheme: (
-        theme: "light" | "dark" | "system",
-        coordinates?: { x: number; y: number },
-      ) => {
-        if (coordinates) {
-          document.documentElement.style.setProperty(
-            "--x",
-            `${coordinates.x}%`,
-          );
-          document.documentElement.style.setProperty(
-            "--y",
-            `${coordinates.y}%`,
-          );
-        } else {
-          document.documentElement.style.removeProperty("--x");
-          document.documentElement.style.removeProperty("--y");
-        }
-
-        if ("startViewTransition" in document) {
-          document.startViewTransition(() => {
-            set({ theme });
-          });
-        } else {
-          set({ theme });
-        }
+      setTheme: (theme: "light" | "dark" | "system") => {
+        set({ theme });
       },
 
       viewMode: "board",

@@ -5,6 +5,7 @@
 - Add start date display on task cards — start date now appears before due date on kanban cards, list rows, and backlog rows.
 - Add Activity/Comments tabs in task detail — activity and comments are now separated into tabs (All / Activity / Comments) for easier navigation.
 - Fix @mention suggestions in task comments — suggestions now only show members of the current project instead of all workspace members.
+- Fix smooth theme transition — replaced heavy `startViewTransition` DOM snapshot with CSS property transitions (150ms) for instant, glitch-free dark/light mode switching.
 
 ## v2.7.5 | FRMWRK (2026-05-05)
 

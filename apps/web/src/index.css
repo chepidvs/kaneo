@@ -216,6 +216,7 @@ input:-webkit-autofill:active {
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease, fill 0.15s ease, stroke 0.15s ease;
   }
   body {
     @apply bg-background font-sans text-foreground antialiased;

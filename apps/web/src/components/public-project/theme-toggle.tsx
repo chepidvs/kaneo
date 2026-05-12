@@ -1,18 +1,15 @@
 import { Moon, Sun } from "lucide-react";
-import type { MouseEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
-import { getClickCoordinates } from "@/lib/get-click-coordinates";
 import { useUserPreferencesStore } from "@/store/user-preferences";
 
 export function ThemeToggle() {
   const { t } = useTranslation();
   const { theme, setTheme } = useUserPreferencesStore();
 
-  const toggleTheme = (event: MouseEvent<HTMLButtonElement>) => {
+  const toggleTheme = () => {
     const newTheme = theme === "dark" ? "light" : "dark";
-    const coordinates = getClickCoordinates(event);
-    setTheme(newTheme, coordinates);
+    setTheme(newTheme);
   };
 
   return (
