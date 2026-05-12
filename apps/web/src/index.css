@@ -35,6 +35,10 @@ input:-webkit-autofill:active {
 
 @custom-variant dark (&:is(.dark *));
 
+@theme {
+  --color-neutral-950: oklch(0.18 0 0);
+}
+
 @theme inline {
   --animate-skeleton: skeleton 2s -1s infinite linear;
   --font-sans: var(--font-sans);
