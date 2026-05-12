@@ -2,6 +2,9 @@
 
 ### Added
 - Add multi-assignee support — tasks can now be assigned to multiple users. Stacked avatars shown on task cards, board rows, and backlog. Assignee popover updated with multi-select toggle.
+- Add start date display on task cards — start date now appears before due date on kanban cards, list rows, and backlog rows.
+- Add Activity/Comments tabs in task detail — activity and comments are now separated into tabs (All / Activity / Comments) for easier navigation.
+- Fix @mention suggestions in task comments — suggestions now only show members of the current project instead of all workspace members.
 
 ## v2.7.5 | FRMWRK (2026-05-05)
 

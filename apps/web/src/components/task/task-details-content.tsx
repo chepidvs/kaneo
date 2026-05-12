@@ -6,6 +6,7 @@ import CommentInput from "@/components/activity/comment-input";
 import { isCommentActivity } from "@/components/activity/utils";
 import { ExternalLinksAccordion } from "@/components/external-links/external-links-accordion";
 import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
+import { Tabs, TabsList, TabsPanel, TabsTab } from "@/components/ui/tabs";
 import { Timeline } from "@/components/ui/timeline";
 import useGetActivitiesByTaskId from "@/hooks/queries/activity/use-get-activities-by-task-id";
 import useExternalLinks from "@/hooks/queries/external-link/use-external-links";
@@ -45,8 +46,43 @@ export default function TaskDetailsContent({
     (rel) => rel.relationType === "subtask" && rel.targetTaskId === taskId,
   );
   const parentTask = parentRelation?.sourceTask;
+  const commentActivities = activities.filter(isCommentActivity);
+  const systemActivities = activities.filter(
+    (activity) => !isCommentActivity(activity),
+  );
 
   if (!taskId) return null;
+
+  const renderActivities = (items: typeof activities) => {
+    if (items.length === 0) {
+      return (
+        <p className="text-sm font-medium text-muted-foreground">
+          {t("tasks:detail.noActivity")}
+        </p>
+      );
+    }
+
+    return (
+      <Timeline>
+        {items.map((activity, index) => {
+          const nextActivity = items[index + 1];
+          const showConnector =
+            !isCommentActivity(activity) &&
+            Boolean(nextActivity) &&
+            !isCommentActivity(nextActivity);
+
+          return (
+            <Activity
+              key={activity.id}
+              activity={activity}
+              step={items.length - index}
+              showConnector={showConnector}
+            />
+          );
+        })}
+      </Timeline>
+    );
+  };
 
   return (
     <div className={`${className} gap-4`}>
@@ -107,30 +143,23 @@ export default function TaskDetailsContent({
         {user?.id && taskId && workspaceId && (
           <CommentInput taskId={taskId} projectId={projectId} />
         )}
-        {activities.length > 0 ? (
-          <Timeline>
-            {activities.map((activity, index) => {
-              const nextActivity = activities[index + 1];
-              const showConnector =
-                !isCommentActivity(activity) &&
-                Boolean(nextActivity) &&
-                !isCommentActivity(nextActivity);
-
-              return (
-                <Activity
-                  key={activity.id}
-                  activity={activity}
-                  step={activities.length - index}
-                  showConnector={showConnector}
-                />
-              );
-            })}
-          </Timeline>
-        ) : (
-          <p className="text-sm font-medium text-muted-foreground">
-            {t("tasks:detail.noActivity")}
-          </p>
-        )}
+        <Tabs defaultValue="all">
+          <TabsList variant="underline">
+            <TabsTab value="all">All</TabsTab>
+            <TabsTab value="activity">Activity</TabsTab>
+            <TabsTab value="comments">
+              Comments
+              {commentActivities.length > 0 && ` (${commentActivities.length})`}
+            </TabsTab>
+          </TabsList>
+          <TabsPanel value="all">{renderActivities(activities)}</TabsPanel>
+          <TabsPanel value="activity">
+            {renderActivities(systemActivities)}
+          </TabsPanel>
+          <TabsPanel value="comments">
+            {renderActivities(commentActivities)}
+          </TabsPanel>
+        </Tabs>
       </div>
     </div>
   );
