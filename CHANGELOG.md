@@ -1,3 +1,8 @@
+## v2.7.6 | FRMWRK (2026-05-12)
+
+### Added
+- Add multi-assignee support — tasks can now be assigned to multiple users. Stacked avatars shown on task cards, board rows, and backlog. Assignee popover updated with multi-select toggle.
+
 ## v2.7.5 | FRMWRK (2026-05-05)
 
 ### Added
