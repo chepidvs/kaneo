@@ -57,9 +57,7 @@ COPY --from=builder /app/packages/email ./packages/email
 RUN sed -i 's/"prepare": "husky"/"prepare": ""/g' package.json && \
   corepack enable && \
   corepack prepare pnpm@10.7.0 --activate && \
-  HUSKY=0 NODE_ENV=production pnpm install --prod --frozen-lockfile --no-optional && \
-  rm -rf apps/api/node_modules/@kaneo/email && \
-  cp -rp packages/email apps/api/node_modules/@kaneo/email
+  HUSKY=0 NODE_ENV=production pnpm install --prod --frozen-lockfile --no-optional
 
 # Copy built API files
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
