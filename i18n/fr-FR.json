@@ -1067,6 +1067,7 @@
 		"notifications": "Notifications",
 		"sidebar": {
 			"overview": "Vue d'ensemble",
+			"views": "Vues",
 			"projects": "Projets",
 			"members": "Membres",
 			"invitations": "Invitations",

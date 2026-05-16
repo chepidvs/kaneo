@@ -5,6 +5,7 @@ import { describeRoute, resolver, validator } from "hono-openapi";
 import * as v from "valibot";
 import db, { schema } from "../database";
 import { userTable } from "../database/schema";
+import getWorkspaceTasks from "../task/controllers/get-workspace-tasks";
 import {
   getWorkspaceRole,
   isWorkspaceManager,
@@ -294,6 +295,60 @@ const workspace = new Hono<{
       const workspaceId = c.get("workspaceId");
       const permissions = await getRolePermissions(workspaceId);
       return c.json(permissions);
+    },
+  )
+  .get(
+    "/:workspaceId/tasks",
+    describeRoute({
+      operationId: "getWorkspaceTasks",
+      tags: ["Workspaces"],
+      description: "Get all tasks across accessible projects in a workspace",
+      responses: {
+        200: {
+          description: "Flat list of workspace tasks",
+          content: {
+            "application/json": { schema: resolver(v.any()) },
+          },
+        },
+      },
+    }),
+    validator("param", v.object({ workspaceId: v.string() })),
+    validator(
+      "query",
+      v.object({
+        page: v.optional(v.string()),
+        limit: v.optional(v.string()),
+        sortBy: v.optional(
+          v.picklist(["createdAt", "dueDate", "priority", "title", "number"]),
+        ),
+        sortOrder: v.optional(v.picklist(["asc", "desc"])),
+        "status[]": v.optional(v.union([v.string(), v.array(v.string())])),
+        "priority[]": v.optional(v.union([v.string(), v.array(v.string())])),
+        "assigneeId[]": v.optional(v.union([v.string(), v.array(v.string())])),
+      }),
+    ),
+    workspaceAccess.fromParam("workspaceId"),
+    async (c) => {
+      const userId = c.get("userId");
+      const workspaceId = c.get("workspaceId");
+      const query = c.req.valid("query");
+
+      const toArray = (v: string | string[] | undefined) => {
+        if (!v) return undefined;
+        return Array.isArray(v) ? v : [v];
+      };
+
+      const result = await getWorkspaceTasks(workspaceId, userId, {
+        page: query.page ? Number(query.page) : undefined,
+        limit: query.limit ? Number(query.limit) : undefined,
+        sortBy: query.sortBy,
+        sortOrder: query.sortOrder,
+        status: toArray(query["status[]"]),
+        priority: toArray(query["priority[]"]),
+        assigneeId: toArray(query["assigneeId[]"]),
+      });
+
+      return c.json(result);
     },
   )
   .put(
