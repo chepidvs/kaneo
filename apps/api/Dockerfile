@@ -25,8 +25,9 @@ COPY packages/libs ./packages/libs
 COPY apps/api ./apps/api
 
 # Build email package first
+# Remove stale incremental tsc cache so tsc does a full emit (otherwise dist/ ends up empty)
 WORKDIR /app/packages/email
-RUN pnpm run build
+RUN rm -rf .cache dist && pnpm run build
 
 # Fix TypeScript config and build API
 WORKDIR /app/apps/api
