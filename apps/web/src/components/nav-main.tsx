@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Rows3 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
   Collapsible,
@@ -29,11 +29,21 @@ export function NavMain() {
 
   const navItems = [
     {
+      title: t("navigation:sidebar.views"),
+      url: `/dashboard/workspace/${workspace.id}/views`,
+      isActive:
+        window.location.pathname ===
+        `/dashboard/workspace/${workspace.id}/views`,
+      badge: null,
+      icon: Rows3,
+    },
+    {
       title: t("navigation:sidebar.projects"),
       url: `/dashboard/workspace/${workspace.id}`,
       isActive:
         window.location.pathname === `/dashboard/workspace/${workspace.id}`,
       badge: null,
+      icon: null,
     },
     {
       title: t("navigation:sidebar.members"),
@@ -42,12 +52,14 @@ export function NavMain() {
         window.location.pathname ===
         `/dashboard/workspace/${workspace.id}/members`,
       badge: null,
+      icon: null,
     },
     {
       title: t("navigation:sidebar.invitations"),
       url: "/dashboard/invitations",
       isActive: window.location.pathname === "/dashboard/invitations",
       badge: pendingCount > 0 ? pendingCount : null,
+      icon: null,
     },
   ];
 

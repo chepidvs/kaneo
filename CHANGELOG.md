@@ -6,6 +6,7 @@
 - Add Activity/Comments tabs in task detail — activity and comments are now separated into tabs (All / Activity / Comments) for easier navigation.
 - Fix @mention suggestions in task comments — suggestions now only show members of the current project instead of all workspace members.
 - Fix smooth theme transition — replaced heavy `startViewTransition` DOM snapshot with CSS property transitions (150ms) for instant, glitch-free dark/light mode switching.
+- Add Views page — cross-project task table showing all tasks from all accessible projects in one place. Supports sort by Created date, Priority, Due date, Title, and Task number (with asc/desc toggle), column-header sort, and infinite scroll.
 
 ## v2.7.5 | FRMWRK (2026-05-05)
 
