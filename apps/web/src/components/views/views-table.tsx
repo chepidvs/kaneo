@@ -110,38 +110,7 @@ export function ViewsTable({
     return () => observer.disconnect();
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-  if (isLoading) {
-    return (
-      <div className="w-full">
-        <div className="border-b border-border/50 px-4 py-2 flex gap-4">
-          {["w-48", "w-20", "w-20", "w-20", "w-20"].map((w) => (
-            <Skeleton key={w} className={`h-3 ${w}`} />
-          ))}
-        </div>
-        {Array.from({ length: 8 }, (_, i) => i).map((i) => (
-          <div
-            key={i}
-            className="border-b border-border/40 px-4 py-3 flex items-center gap-4"
-          >
-            <Skeleton className="h-3 w-48" />
-            <Skeleton className="h-3 w-16" />
-            <Skeleton className="h-3 w-16" />
-            <Skeleton className="h-5 w-20" />
-            <Skeleton className="h-6 w-6 rounded-full" />
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  if (tasks.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-24 gap-3 text-muted-foreground">
-        <Tag className="h-10 w-10 opacity-30" />
-        <p className="text-sm">No tasks found across your projects</p>
-      </div>
-    );
-  }
+  const showEmptyState = !isLoading && tasks.length === 0;
 
   return (
     <div className="w-full overflow-auto">
@@ -174,6 +143,27 @@ export function ViewsTable({
         <div className="px-4 py-2.5 w-28 shrink-0">Assignees</div>
         <div className="px-4 py-2.5 w-32 shrink-0">Labels</div>
       </div>
+
+      {isLoading &&
+        Array.from({ length: 8 }, (_, i) => i).map((i) => (
+          <div
+            key={i}
+            className="border-b border-border/40 px-4 py-3 flex items-center gap-4"
+          >
+            <Skeleton className="h-3 flex-1 min-w-0" />
+            <Skeleton className="h-3 w-20 shrink-0" />
+            <Skeleton className="h-3 w-20 shrink-0" />
+            <Skeleton className="h-6 w-20 shrink-0 rounded-full" />
+            <Skeleton className="h-3 w-24 shrink-0" />
+          </div>
+        ))}
+
+      {showEmptyState && (
+        <div className="flex flex-col items-center justify-center py-24 gap-3 text-muted-foreground">
+          <Tag className="h-10 w-10 opacity-30" />
+          <p className="text-sm">No tasks found across your projects</p>
+        </div>
+      )}
 
       {/* Rows */}
       {tasks.map((task) => (
