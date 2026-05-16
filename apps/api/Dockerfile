@@ -44,12 +44,13 @@ RUN addgroup -g 1001 appuser && \
 
 WORKDIR /app
 
-# Copy package files for production install
+# Copy package manifests and built workspace packages BEFORE pnpm install
+# so the virtual store includes dist/ files when links are created
 COPY --from=builder /app/package.json /app/pnpm-lock.yaml /app/pnpm-workspace.yaml ./
 COPY --from=builder /app/apps/api/package.json ./apps/api/
-COPY --from=builder /app/packages/typescript-config/package.json ./packages/typescript-config/
-COPY --from=builder /app/packages/libs/package.json ./packages/libs/
-COPY --from=builder /app/packages/email/package.json ./packages/email/
+COPY --from=builder /app/packages/typescript-config ./packages/typescript-config
+COPY --from=builder /app/packages/libs ./packages/libs
+COPY --from=builder /app/packages/email ./packages/email
 
 # Install production dependencies only
 RUN sed -i 's/"prepare": "husky"/"prepare": ""/g' package.json && \
@@ -57,10 +58,9 @@ RUN sed -i 's/"prepare": "husky"/"prepare": ""/g' package.json && \
   corepack prepare pnpm@10.7.0 --activate && \
   HUSKY=0 NODE_ENV=production pnpm install --prod --frozen-lockfile --no-optional
 
-# Copy built files
+# Copy built API files
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 COPY --from=builder /app/apps/api/drizzle ./apps/api/drizzle
-COPY --from=builder /app/packages/email ./packages/email
 
 # Set environment variables
 ENV NODE_ENV=production
