@@ -54,6 +54,7 @@ function RouteComponent() {
           <SortControl sort={sort} onSortChange={setSort} />
         </div>
         <ViewsTable
+          workspaceId={workspaceId}
           tasks={tasks}
           isLoading={isLoading}
           isFetchingNextPage={isFetchingNextPage}

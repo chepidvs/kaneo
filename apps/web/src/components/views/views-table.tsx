@@ -1,3 +1,4 @@
+import { useNavigate } from "@tanstack/react-router";
 import { ArrowDown, ArrowUp, ArrowUpDown, Tag } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -29,6 +30,7 @@ type SortBy = "createdAt" | "dueDate" | "priority" | "title" | "number";
 type SortOrder = "asc" | "desc";
 
 type ViewsTableProps = {
+  workspaceId: string;
   tasks: WorkspaceTask[];
   isLoading: boolean;
   isFetchingNextPage: boolean;
@@ -82,6 +84,7 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export function ViewsTable({
+  workspaceId,
   tasks,
   isLoading,
   isFetchingNextPage,
@@ -91,7 +94,16 @@ export function ViewsTable({
   sortOrder,
   onSort,
 }: ViewsTableProps) {
+  const navigate = useNavigate();
   const sentinelRef = useRef<HTMLDivElement>(null);
+
+  function handleTaskClick(task: WorkspaceTask) {
+    navigate({
+      to: "/dashboard/workspace/$workspaceId/project/$projectId/board",
+      params: { workspaceId, projectId: task.projectId },
+      search: { taskId: task.id },
+    });
+  }
 
   useEffect(() => {
     const sentinel = sentinelRef.current;
@@ -167,9 +179,11 @@ export function ViewsTable({
 
       {/* Rows */}
       {tasks.map((task) => (
-        <div
+        <button
           key={task.id}
-          className="flex items-center gap-0 border-b border-border/40 hover:bg-accent/40 transition-colors group"
+          type="button"
+          onClick={() => handleTaskClick(task)}
+          className="w-full text-left flex items-center gap-0 border-b border-border/40 hover:bg-accent/40 transition-colors group cursor-pointer focus:outline-none focus-visible:bg-accent/40"
         >
           {/* Work Item */}
           <div className="flex items-center gap-2 px-4 py-2.5 flex-1 min-w-0">
@@ -251,7 +265,7 @@ export function ViewsTable({
               </span>
             )}
           </div>
-        </div>
+        </button>
       ))}
 
       {/* Infinite scroll sentinel */}
