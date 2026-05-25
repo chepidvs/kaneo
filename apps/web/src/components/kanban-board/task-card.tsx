@@ -9,6 +9,7 @@ import {
   CalendarX,
   GitMerge,
   GitPullRequest,
+  GripVertical,
   Shapes,
 } from "lucide-react";
 import { type CSSProperties, useMemo, useState } from "react";
@@ -111,7 +112,6 @@ function TaskCard({ task }: TaskCardProps) {
     transform: CSS.Transform.toString(transform),
     transition: isDragging ? undefined : (transition ?? "transform 150ms ease"),
     opacity: isDragging ? 0 : 1,
-    touchAction: "none",
     zIndex: isDragging ? 999 : "auto",
   };
 
@@ -165,13 +165,13 @@ function TaskCard({ task }: TaskCardProps) {
   };
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+    <div ref={setNodeRef} style={style} {...attributes}>
       <ContextMenu>
         <ContextMenuTrigger asChild>
           {/** biome-ignore lint/a11y/noStaticElementInteractions: false positive for onClick and onKeyDown */}
           <div
             onClick={handleTaskCardClick}
-            className={`group relative cursor-move rounded-lg border bg-background p-3 shadow-xs/5 transition-all duration-200 ease-out ${
+            className={`group relative cursor-pointer rounded-lg border bg-background p-3 shadow-xs/5 transition-all duration-200 ease-out ${
               isDragging
                 ? "border-ring/40 bg-card shadow-lg"
                 : "hover:border-border/90 hover:bg-background hover:shadow-sm"
@@ -230,7 +230,16 @@ function TaskCard({ task }: TaskCardProps) {
               </div>
             )}
 
-            <div className="mb-2.5 pr-6">
+            <div className="mb-2.5 pr-6 flex items-start gap-1.5">
+              {/** biome-ignore lint/a11y/noStaticElementInteractions lint/a11y/useKeyWithClickEvents: drag handle only needs pointer/touch interaction */}
+              <div
+                {...listeners}
+                onClick={(e) => e.stopPropagation()}
+                className="mt-0.5 shrink-0 cursor-grab opacity-25 md:opacity-0 md:group-hover:opacity-40 hover:!opacity-70 active:cursor-grabbing transition-opacity"
+                style={{ touchAction: "none" }}
+              >
+                <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
+              </div>
               <div
                 className="overflow-hidden break-words text-sm leading-5 font-medium text-foreground/95"
                 style={{
