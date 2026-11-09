@@ -45,6 +45,23 @@ async function importTasks(
   let taskNumber = nextTaskNumber;
   const validStatuses = await getValidTaskStatuses(projectId);
 
+  // Track the next available position per status so imported tasks get
+  // sequential, non-colliding positions (schema default is 0, which would
+  // otherwise stack every imported task at position 0 within its column).
+  const existingTasks = await db
+    .select({ status: taskTable.status, position: taskTable.position })
+    .from(taskTable)
+    .where(eq(taskTable.projectId, projectId));
+
+  const nextPositionByStatus = new Map<string, number>();
+  for (const existing of existingTasks) {
+    const current = nextPositionByStatus.get(existing.status) ?? 0;
+    nextPositionByStatus.set(
+      existing.status,
+      Math.max(current, (existing.position ?? 0) + 1),
+    );
+  }
+
   const results = [];
 
   for (const taskData of tasksToImport) {
@@ -71,6 +88,9 @@ async function importTasks(
           ? [taskData.userId]
           : [];
 
+      const position = nextPositionByStatus.get(status) ?? 0;
+      nextPositionByStatus.set(status, position + 1);
+
       const [createdTask] = await db
         .insert(taskTable)
         .values({
@@ -83,6 +103,7 @@ async function importTasks(
           dueDate: taskData.dueDate ? new Date(taskData.dueDate) : null,
           description: taskData.description || "",
           priority,
+          position,
           number: ++taskNumber,
         })
         .returning();
