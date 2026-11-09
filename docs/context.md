@@ -28,7 +28,7 @@ Infra:
 - Gmail SMTP (email)
 
 ## Current Version
-v2.7.5 | FRMWRK
+v2.7.6 | FRMWRK
 
 ## Status
 Core system stable:
