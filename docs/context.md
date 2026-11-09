@@ -28,7 +28,7 @@ Infra:
 - Gmail SMTP (email)
 
 ## Current Version
-v2.7.6 | FRMWRK
+v2.7.7 | FRMWRK
 
 ## Status
 Core system stable:
@@ -50,6 +50,8 @@ UX:
 - fast
 - minimal flicker
 - smoother kanban drag & drop (v2.7.5)
+- mobile board vertical scroll + drag card from anywhere (v2.7.7)
+- imported tasks get sequential positions (v2.7.7)
 
 ## Architecture (Current)
 Workspace
@@ -62,7 +64,7 @@ Workspace
         → Activity
 
 ## Next Phase
-v2.7.6 — TBD
+v2.7.8 — TBD
 
 ## Principle
 - clean architecture
