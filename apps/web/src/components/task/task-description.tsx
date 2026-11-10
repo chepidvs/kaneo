@@ -909,7 +909,7 @@ export default function TaskDescription({ taskId }: TaskDescriptionProps) {
         "\n",
         "\0",
       );
-      const match = /(?:^|\s)\/([^\s/]*)$/.exec(textBeforeCursor);
+      const match = /^\/([^\s/]*)$/.exec(textBeforeCursor);
       if (!match) {
         setSlashMenu(null);
         return;

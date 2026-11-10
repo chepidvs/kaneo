@@ -1170,7 +1170,7 @@ export default function CommentEditor({
         "\0",
         "\0",
       );
-      const match = textBefore.match(/(?:^|\s)\/([^\s/]*)$/);
+      const match = textBefore.match(/^\/([^\s/]*)$/);
       if (!match) {
         setSlashMenu(null);
         return;
