@@ -2,6 +2,7 @@ import {
   Archive,
   ArrowDownToLine,
   CalendarIcon,
+  Check,
   Menu,
   Trash2,
   X,
@@ -54,6 +55,7 @@ type BulkActionItem = {
   value: string;
   label: string;
   icon?: ReactNode;
+  checked?: boolean;
   onRun: () => void;
 };
 
@@ -90,6 +92,7 @@ function BulkToolbar() {
     bulkAssign,
     bulkPriority,
     bulkAddLabel,
+    bulkRemoveLabel,
     bulkDueDate,
   } = useBulkOperations();
 
@@ -99,6 +102,16 @@ function BulkToolbar() {
   );
   const { data: projectLabels = [] } = useGetLabelsByProject(projectId);
 
+  const allTasks = useMemo(() => {
+    if (!project) return [];
+    const columnTasks = (project.columns ?? []).flatMap((c) => c.tasks ?? []);
+    return [
+      ...columnTasks,
+      ...(project.plannedTasks ?? []),
+      ...(project.archivedTasks ?? []),
+    ];
+  }, [project]);
+
   const [isActionsOpen, setIsActionsOpen] = useState(false);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
 
@@ -107,6 +120,46 @@ function BulkToolbar() {
   const uniqueLabels = useMemo(() => {
     return projectLabels;
   }, [projectLabels]);
+
+  const selectedTasks = useMemo(
+    () => allTasks.filter((task) => selectedTaskIds.has(task.id)),
+    [allTasks, selectedTaskIds],
+  );
+
+  const labelsOnAll = useMemo(() => {
+    if (selectedTasks.length === 0) return new Set<string>();
+    const counts = new Map<string, number>();
+    for (const task of selectedTasks) {
+      for (const l of task.labels ?? []) {
+        counts.set(l.id, (counts.get(l.id) ?? 0) + 1);
+      }
+    }
+    const result = new Set<string>();
+    for (const [id, count] of counts) {
+      if (count === selectedTasks.length) result.add(id);
+    }
+    return result;
+  }, [selectedTasks]);
+
+  const sharedPriority = useMemo(() => {
+    if (selectedTasks.length === 0) return null;
+    const first = selectedTasks[0].priority;
+    return selectedTasks.every((t) => t.priority === first) ? first : null;
+  }, [selectedTasks]);
+
+  const sharedAssigneeId = useMemo(() => {
+    if (selectedTasks.length === 0) return null;
+    const first = selectedTasks[0].assigneeId ?? null;
+    return selectedTasks.every((t) => (t.assigneeId ?? null) === first)
+      ? first
+      : null;
+  }, [selectedTasks]);
+
+  const sharedStatus = useMemo(() => {
+    if (selectedTasks.length === 0) return null;
+    const first = selectedTasks[0].status;
+    return selectedTasks.every((t) => t.status === first) ? first : null;
+  }, [selectedTasks]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -179,13 +232,11 @@ function BulkToolbar() {
           status,
         });
         toast.success(t("tasks:bulk.updateSuccess", { count: selectedCount }));
-        clearSelection();
-        setIsActionsOpen(false);
       } catch (_error) {
         toast.error(t("tasks:bulk.updateError"));
       }
     },
-    [bulkChangeStatus, selectedTaskIds, selectedCount, clearSelection, t],
+    [bulkChangeStatus, selectedTaskIds, selectedCount, t],
   );
 
   const handleBulkAssign = useCallback(
@@ -193,13 +244,11 @@ function BulkToolbar() {
       try {
         await bulkAssign({ taskIds: Array.from(selectedTaskIds), userId });
         toast.success(t("tasks:bulk.assignSuccess", { count: selectedCount }));
-        clearSelection();
-        setIsActionsOpen(false);
       } catch (_error) {
         toast.error(t("tasks:bulk.assignError"));
       }
     },
-    [bulkAssign, selectedTaskIds, selectedCount, clearSelection, t],
+    [bulkAssign, selectedTaskIds, selectedCount, t],
   );
 
   const handleBulkPriority = useCallback(
@@ -210,13 +259,11 @@ function BulkToolbar() {
           priority,
         });
         toast.success(t("tasks:bulk.updateSuccess", { count: selectedCount }));
-        clearSelection();
-        setIsActionsOpen(false);
       } catch (_error) {
         toast.error(t("tasks:bulk.updatePriorityError"));
       }
     },
-    [bulkPriority, selectedTaskIds, selectedCount, clearSelection, t],
+    [bulkPriority, selectedTaskIds, selectedCount, t],
   );
 
   const handleBulkAddLabel = useCallback(
@@ -229,13 +276,28 @@ function BulkToolbar() {
         toast.success(
           t("tasks:bulk.addLabelSuccess", { count: selectedCount }),
         );
-        clearSelection();
-        setIsActionsOpen(false);
       } catch (_error) {
         toast.error(t("tasks:bulk.addLabelError"));
       }
     },
-    [bulkAddLabel, selectedTaskIds, selectedCount, clearSelection, t],
+    [bulkAddLabel, selectedTaskIds, selectedCount, t],
+  );
+
+  const handleBulkRemoveLabel = useCallback(
+    async (labelId: string) => {
+      try {
+        await bulkRemoveLabel({
+          taskIds: Array.from(selectedTaskIds),
+          labelId,
+        });
+        toast.success(
+          t("tasks:bulk.removeLabelSuccess", { count: selectedCount }),
+        );
+      } catch (_error) {
+        toast.error(t("tasks:bulk.removeLabelError"));
+      }
+    },
+    [bulkRemoveLabel, selectedTaskIds, selectedCount, t],
   );
 
   const handleBulkDueDate = useCallback(
@@ -282,81 +344,111 @@ function BulkToolbar() {
       {
         value: "status",
         label: t("tasks:bulk.changeStatus"),
-        items: (project?.columns ?? []).map((col) => ({
-          value: `status-${col.id}`,
-          label: col.name,
-          icon: getColumnIcon(col.id, col.isFinal),
-          onRun: () => {
-            void handleBulkChangeStatus(col.id);
-          },
-        })),
+        items: (project?.columns ?? []).map((col) => {
+          const checked = sharedStatus === col.id;
+          return {
+            value: `status-${col.id}`,
+            label: col.name,
+            icon: getColumnIcon(col.id, col.isFinal),
+            checked,
+            onRun: () => {
+              if (checked) return;
+              void handleBulkChangeStatus(col.id);
+            },
+          };
+        }),
       },
       {
         value: "assign",
         label: t("tasks:bulk.assignTo"),
-        items: (workspaceUsers?.members ?? []).map((member) => ({
-          value: `assign-${member.userId}`,
-          label: member.user?.name || t("common:people.someone"),
-          icon: (
-            <Avatar className="h-5 w-5">
-              <AvatarImage
-                src={member.user?.image ?? ""}
-                alt={member.user?.name || ""}
-              />
-              <AvatarFallback className="border border-border/30 text-xs font-medium">
-                {member.user?.name?.charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-          ),
-          onRun: () => {
-            void handleBulkAssign(member.userId);
-          },
-        })),
+        items: (workspaceUsers?.members ?? []).map((member) => {
+          const checked = sharedAssigneeId === member.userId;
+          return {
+            value: `assign-${member.userId}`,
+            label: member.user?.name || t("common:people.someone"),
+            icon: (
+              <Avatar className="h-5 w-5">
+                <AvatarImage
+                  src={member.user?.image ?? ""}
+                  alt={member.user?.name || ""}
+                />
+                <AvatarFallback className="border border-border/30 text-xs font-medium">
+                  {member.user?.name?.charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+            ),
+            checked,
+            onRun: () => {
+              void handleBulkAssign(checked ? "" : member.userId);
+            },
+          };
+        }),
       },
       {
         value: "priority",
         label: t("tasks:bulk.setPriority"),
-        items: priorityOptions.map((opt) => ({
-          value: `priority-${opt.value}`,
-          label: opt.label,
-          icon: getPriorityIcon(opt.value),
-          onRun: () => {
-            void handleBulkPriority(opt.value);
-          },
-        })),
+        items: priorityOptions.map((opt) => {
+          const checked = sharedPriority === opt.value;
+          return {
+            value: `priority-${opt.value}`,
+            label: opt.label,
+            icon: getPriorityIcon(opt.value),
+            checked,
+            onRun: () => {
+              if (checked && opt.value !== "no-priority") {
+                void handleBulkPriority("no-priority");
+              } else {
+                void handleBulkPriority(opt.value);
+              }
+            },
+          };
+        }),
       },
       {
         value: "label",
         label: t("tasks:bulk.addLabel"),
-        items: uniqueLabels.map((label) => ({
-          value: `label-${label.id}`,
-          label: label.name,
-          icon: (
-            <span
-              className="inline-block h-3 w-3 shrink-0 rounded-full"
-              style={{
-                backgroundColor:
-                  labelColors.find((c) => c.value === label.color)?.color ||
-                  "var(--color-neutral-400)",
-              }}
-            />
-          ),
-          onRun: () => {
-            void handleBulkAddLabel(label.id);
-          },
-        })),
+        items: uniqueLabels.map((label) => {
+          const checked = labelsOnAll.has(label.id);
+          return {
+            value: `label-${label.id}`,
+            label: label.name,
+            icon: (
+              <span
+                className="inline-block h-3 w-3 shrink-0 rounded-full"
+                style={{
+                  backgroundColor:
+                    labelColors.find((c) => c.value === label.color)?.color ||
+                    "var(--color-neutral-400)",
+                }}
+              />
+            ),
+            checked,
+            onRun: () => {
+              if (checked) {
+                void handleBulkRemoveLabel(label.id);
+              } else {
+                void handleBulkAddLabel(label.id);
+              }
+            },
+          };
+        }),
       },
     ],
     [
       project?.columns,
       workspaceUsers?.members,
       uniqueLabels,
+      labelsOnAll,
+      sharedPriority,
+      sharedAssigneeId,
+      sharedStatus,
       handleBulkDelete,
       handleBulkArchive,
       handleBulkChangeStatus,
       handleBulkAssign,
       handleBulkPriority,
       handleBulkAddLabel,
+      handleBulkRemoveLabel,
       priorityOptions,
       t,
     ],
@@ -456,6 +548,9 @@ function BulkToolbar() {
                           >
                             <span className="shrink-0">{item.icon}</span>
                             <span className="flex-1 text-sm">{item.label}</span>
+                            {item.checked && (
+                              <Check className="size-3.5 shrink-0 text-muted-foreground" />
+                            )}
                           </CommandItem>
                         )}
                       </CommandCollection>

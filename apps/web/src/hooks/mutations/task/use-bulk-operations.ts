@@ -127,6 +127,26 @@ export function useBulkOperations() {
     },
   });
 
+  const bulkRemoveLabel = useMutation({
+    mutationFn: async ({
+      taskIds,
+      labelId,
+    }: {
+      taskIds: string[];
+      labelId: string;
+    }) => {
+      await bulkOperation({
+        taskIds,
+        operation: "removeLabel",
+        value: labelId,
+      });
+    },
+    onSuccess: () => {
+      invalidateCommon();
+      queryClientRef.invalidateQueries({ queryKey: ["labels"] });
+    },
+  });
+
   const bulkDueDate = useMutation({
     mutationFn: async ({
       taskIds,
@@ -153,6 +173,7 @@ export function useBulkOperations() {
     bulkMoveToBoard: bulkMoveToBoard.mutateAsync,
     bulkPriority: bulkPriority.mutateAsync,
     bulkAddLabel: bulkAddLabel.mutateAsync,
+    bulkRemoveLabel: bulkRemoveLabel.mutateAsync,
     bulkDueDate: bulkDueDate.mutateAsync,
   };
 }
