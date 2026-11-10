@@ -1,5 +1,5 @@
 import { CheckCircle2, Circle, GripVertical, Plus, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +24,12 @@ export default function ColumnEditor({ projectId }: ColumnEditorProps) {
   const { mutateAsync: reorderColumns } = useReorderColumns();
   const [newColumnName, setNewColumnName] = useState("");
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [canDrag, setCanDrag] = useState(false);
+  const [localColumns, setLocalColumns] = useState<typeof columns>(columns);
+
+  useEffect(() => {
+    if (draggedIndex === null) setLocalColumns(columns);
+  }, [columns, draggedIndex]);
 
   const handleCreate = async () => {
     if (!newColumnName.trim()) return;
@@ -88,22 +94,35 @@ export default function ColumnEditor({ projectId }: ColumnEditorProps) {
 
   const handleDragStart = (index: number) => {
     setDraggedIndex(index);
+    setLocalColumns(columns);
   };
 
   const handleDragOver = (e: React.DragEvent, index: number) => {
     e.preventDefault();
-    if (draggedIndex === null || draggedIndex === index || !columns) return;
+    if (draggedIndex === null || draggedIndex === index || !localColumns)
+      return;
 
-    const reordered = [...columns];
+    const reordered = [...localColumns];
     const [removed] = reordered.splice(draggedIndex, 1);
     reordered.splice(index, 0, removed);
-
-    const updates = reordered.map((col, i) => ({ id: col.id, position: i }));
-    reorderColumns({ projectId, columns: updates });
+    setLocalColumns(reordered);
     setDraggedIndex(index);
   };
 
   const handleDragEnd = () => {
+    setCanDrag(false);
+    if (draggedIndex === null || !localColumns || !columns) {
+      setDraggedIndex(null);
+      return;
+    }
+    const changed = localColumns.some((col, i) => col.id !== columns[i]?.id);
+    if (changed) {
+      const updates = localColumns.map((col, i) => ({
+        id: col.id,
+        position: i,
+      }));
+      reorderColumns({ projectId, columns: updates });
+    }
     setDraggedIndex(null);
   };
 
@@ -118,18 +137,27 @@ export default function ColumnEditor({ projectId }: ColumnEditorProps) {
   return (
     <div className="space-y-3">
       <div className="space-y-1">
-        {columns?.map((col, index) => (
+        {localColumns?.map((col, index) => (
           // biome-ignore lint/a11y/useSemanticElements: false positive for role="listitem"
           <div
             key={col.id}
             role="listitem"
-            draggable
+            draggable={canDrag}
             onDragStart={() => handleDragStart(index)}
             onDragOver={(e) => handleDragOver(e, index)}
             onDragEnd={handleDragEnd}
-            className="flex items-center gap-2 p-2 border border-border rounded-md bg-sidebar hover:bg-sidebar-accent/50 transition-colors"
+            className={`flex items-center gap-2 p-2 border border-border rounded-md bg-sidebar hover:bg-sidebar-accent/50 transition-colors ${
+              draggedIndex === index ? "opacity-50" : ""
+            }`}
           >
-            <GripVertical className="w-4 h-4 text-muted-foreground cursor-grab shrink-0" />
+            {/** biome-ignore lint/a11y/noStaticElementInteractions: drag handle only needs pointer interaction */}
+            <div
+              onMouseDown={() => setCanDrag(true)}
+              onMouseUp={() => setCanDrag(false)}
+              className="shrink-0 cursor-grab active:cursor-grabbing"
+            >
+              <GripVertical className="w-4 h-4 text-muted-foreground" />
+            </div>
             <Input
               defaultValue={col.name}
               className="h-8 text-sm flex-1"

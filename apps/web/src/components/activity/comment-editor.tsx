@@ -38,6 +38,7 @@ import {
   TableRowsSplit,
   Trash2,
   UnderlineIcon,
+  Unlink,
 } from "lucide-react";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -1321,13 +1322,14 @@ export default function CommentEditor({
       t("activity:comment.editor.enterUrl"),
       previousUrl || "",
     );
-    if (url === null) return;
-    if (!url.trim()) {
-      editor.chain().focus().extendMarkRange("link").unsetLink().run();
-      return;
-    }
+    if (url === null || !url.trim()) return;
     editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
   }, [disabled, editor, readOnly, t]);
+
+  const unsetLink = useCallback(() => {
+    if (readOnly || disabled || !editor) return;
+    editor.chain().focus().extendMarkRange("link").unsetLink().run();
+  }, [disabled, editor, readOnly]);
 
   const resolveCodeBlockNodeData = useCallback(
     (pos: number) => {
@@ -2052,9 +2054,26 @@ export default function CommentEditor({
               editor.isActive("link") && "bg-accent text-accent-foreground",
             )}
             onClick={setLink}
+            title={t(
+              editor.isActive("link")
+                ? "activity:comment.editor.editLink"
+                : "activity:comment.editor.addLink",
+            )}
           >
             <Link2 className="size-3.5" />
           </Button>
+          {editor.isActive("link") && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="xs"
+              className="kaneo-comment-editor-bubble-btn"
+              onClick={unsetLink}
+              title={t("activity:comment.editor.removeLink")}
+            >
+              <Unlink className="size-3.5" />
+            </Button>
+          )}
           <Button
             type="button"
             variant="ghost"

@@ -31,6 +31,7 @@ import {
   Strikethrough,
   Table2,
   Underline as UnderlineIcon,
+  Unlink,
 } from "lucide-react";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -819,11 +820,7 @@ export default function TaskDescription({ taskId }: TaskDescriptionProps) {
         t("tasks:detail.editor.enterUrl"),
         prefilledUrl || previousUrl || "",
       );
-      if (url === null) return;
-      if (url.trim() === "") {
-        editor.chain().focus().extendMarkRange("link").unsetLink().run();
-        return;
-      }
+      if (url === null || url.trim() === "") return;
       editor
         .chain()
         .focus()
@@ -833,6 +830,11 @@ export default function TaskDescription({ taskId }: TaskDescriptionProps) {
     },
     [editor, t],
   );
+
+  const unsetLink = useCallback(() => {
+    if (!editor) return;
+    editor.chain().focus().extendMarkRange("link").unsetLink().run();
+  }, [editor]);
 
   const filteredSlashCommands = useMemo(() => {
     const query = slashMenu?.query.trim().toLowerCase() || "";
@@ -1591,9 +1593,26 @@ export default function TaskDescription({ taskId }: TaskDescriptionProps) {
               editor.isActive("link") && "bg-accent text-accent-foreground",
             )}
             onClick={() => setLink()}
+            title={t(
+              editor.isActive("link")
+                ? "tasks:detail.editor.editLink"
+                : "tasks:detail.editor.addLink",
+            )}
           >
             <Link2 className="size-3.5" />
           </Button>
+          {editor.isActive("link") && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="xs"
+              className="kaneo-tiptap-bubble-btn"
+              onClick={unsetLink}
+              title={t("tasks:detail.editor.removeLink")}
+            >
+              <Unlink className="size-3.5" />
+            </Button>
+          )}
         </BubbleMenu>
       )}
 
